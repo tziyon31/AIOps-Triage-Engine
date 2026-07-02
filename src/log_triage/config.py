@@ -60,7 +60,7 @@ def _apply_policy_exports(policy: dict[str, Any]) -> None:
 
 
 def _apply_training_exports(training: dict[str, Any]) -> None:
-    global ARTIFACT_PATH, SCHEMA_VERSION, MODEL_VERSION, ARTIFACT_TYPE
+    global ARTIFACT_PATH, SCHEMA_VERSION, ARTIFACT_TYPE
 
     artifact_cfg = training["artifact"]
     latest_model_path = find_latest_artifact_model_path(training)
@@ -76,7 +76,6 @@ def _apply_training_exports(training: dict[str, Any]) -> None:
         )
 
     SCHEMA_VERSION = training["schema_version"]
-    MODEL_VERSION = f"v{artifact_cfg['major']}.{artifact_cfg['minor']}"
     ARTIFACT_TYPE = training["artifact_type"]
 
 
@@ -91,7 +90,6 @@ ACTION_RISK: dict[str, str]
 REQUIRES_APPROVAL: dict[str, bool]
 ARTIFACT_PATH: str
 SCHEMA_VERSION: str
-MODEL_VERSION: str
 ARTIFACT_TYPE: str
 
 _apply_policy_exports(_policy)
