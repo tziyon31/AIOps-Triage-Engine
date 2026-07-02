@@ -1,5 +1,7 @@
 # AIOps Triage Engine
 
+![CI](https://github.com/tziyon31/AIOps-Triage-Engine/actions/workflows/ci.yml/badge.svg)
+
 ML decision engine for DevOps log triage: parse a raw log line, classify it with manual features + TF-IDF, route through embeddings or LLM when needed, and return a structured **Decision Object** JSON.
 
 ```
@@ -29,15 +31,19 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Bitwarden (required for predict & pipeline)
+### LLM / API keys
 
-Prediction loads an OpenAI API key from Bitwarden (`OpenAIKey-MLOps` by default). The vault must be unlocked and `BW_SESSION` exported — the pipeline **fails** if secrets are unavailable (no silent skip).
+By default, `run_pipeline.sh` and CI set `LOG_TRIAGE_DISABLE_LLM=1` so predict uses only the classifier fast path (no OpenAI/Bitwarden).
+
+For full router + LLM locally:
 
 ```bash
-export BW_SESSION="$(bw unlock --raw)"
+export BW_SESSION="$(bw unlock --raw)"   # or export OPENAI_API_KEY=...
+unset LOG_TRIAGE_DISABLE_LLM
+python -m src.log_triage.predict "..."
 ```
 
-Requires [Bitwarden CLI](https://bitwarden.com/help/cli/) (`bw`) on `PATH`.
+`OPENAI_API_KEY` is used when set; otherwise the key is loaded from Bitwarden (`OpenAIKey-MLOps`). Requires [Bitwarden CLI](https://bitwarden.com/help/cli/) (`bw`) on `PATH` only for the Bitwarden path.
 
 ## Train
 
@@ -96,13 +102,14 @@ Router thresholds (`min_confidence`, `similarity_threshold`) and policy approval
 
 ## Pipeline
 
-Production-like end-to-end validation:
+Deterministic end-to-end validation (no external API calls):
 
 ```bash
 chmod +x run_pipeline.sh
-export BW_SESSION="$(bw unlock --raw)"
-./run_pipeline.sh
+LOG_TRIAGE_DISABLE_LLM=1 ./run_pipeline.sh
 ```
+
+`run_pipeline.sh` sets `LOG_TRIAGE_DISABLE_LLM=1` by default.
 
 Steps (in order):
 
@@ -120,17 +127,14 @@ Steps (in order):
 ## Tests
 
 ```bash
-# All tests
-pytest -v
+# Deterministic tests (default in CI)
+LOG_TRIAGE_DISABLE_LLM=1 pytest -v -m "not llm_integration"
 
-# Policy only
-pytest tests/test_policy.py -v
+# Public predict CLI contract (no Bitwarden required)
+LOG_TRIAGE_DISABLE_LLM=1 pytest -m contract -v
 
-# Artifact layout (needs a trained artifact)
-pytest tests/test_artifact.py -v
-
-# Public predict CLI contract (requires BW_SESSION)
-pytest -m contract -v
+# Real LLM/API integration (optional, main or manual CI job)
+LOG_TRIAGE_ENABLE_LLM_INTEGRATION=1 OPENAI_API_KEY=... pytest tests/test_llm_integration.py -v
 ```
 
 ## Configuration

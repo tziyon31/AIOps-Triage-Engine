@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,10 @@ import yaml
 from src.log_triage.artifact_version import find_latest_artifact_model_path
 
 # Runtime / secrets (not policy or training hyperparameters)
+def is_llm_disabled() -> bool:
+    return os.getenv("LOG_TRIAGE_DISABLE_LLM") == "1"
+
+
 BITWARDEN_SECRET_NAME = "OpenAIKey-MLOps"
 EMBEDDING_MODEL = "text-embedding-3-small"
 LLM_MODEL = "gpt-4.1-mini"

@@ -7,8 +7,10 @@ from src.log_triage.config import (
     MIN_CONFIDENCE,
     REQUIRES_APPROVAL,
     SIMILARITY_THRESHOLD,
+    is_llm_disabled,
 )
 from src.log_triage.llm_fallback import analyze_with_llm
+from src.log_triage.schemas import build_decision
 from src.log_triage.similarity_search import find_similar_incidents
 
 
@@ -82,6 +84,22 @@ def route_decision(
             **classifier_decision,
             "router_reason": "High confidence and low risk. Classifier decision accepted.",
         }
+
+    if is_llm_disabled():
+        return build_decision(
+            strategy_used="llm_disabled",
+            predicted_action="needs_more_context",
+            confidence=0.0,
+            risk_level="low",
+            requires_approval=True,
+            reason="LLM fallback is disabled in this environment.",
+            similar_incidents=[],
+            input_text=classifier_decision.get("input_text"),
+            raw_log=classifier_decision.get("raw_log"),
+            router_reason=(
+                "Classifier was not sufficient and embedding/LLM paths are disabled."
+            ),
+        )
 
     similar_incidents = find_similar_incidents(
         client=embedding_client,

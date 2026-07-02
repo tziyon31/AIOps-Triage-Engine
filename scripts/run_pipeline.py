@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shlex
 import subprocess
 import sys
@@ -107,13 +108,6 @@ def validate_smoke_decision(decision: dict[str, Any]) -> None:
     log("Smoke Decision Object passed schema validation")
 
 
-def require_secrets_manager() -> None:
-    from src.log_triage.secrets import require_bitwarden_session
-
-    require_bitwarden_session()
-    log("Secrets manager check passed")
-
-
 def validate_smoke_policy(decision: dict[str, Any]) -> None:
     from src.log_triage.policy import validate
 
@@ -134,6 +128,8 @@ def validate_smoke_policy(decision: dict[str, Any]) -> None:
 
 
 def main() -> int:
+    os.environ.setdefault("LOG_TRIAGE_DISABLE_LLM", "1")
+
     python = sys.executable
 
     log("Pipeline started")
@@ -166,8 +162,6 @@ def main() -> int:
         [python, "-m", "pytest", "tests/test_artifact.py", "-v"],
     )
 
-    require_secrets_manager()
-
     run_command(
         "Prediction contract tests",
         [python, "-m", "pytest", "-m", "contract", "-v", "-s"],
@@ -185,7 +179,7 @@ def main() -> int:
 
     run_command(
         "Full test suite",
-        [python, "-m", "pytest", "-v"],
+        [python, "-m", "pytest", "-v", "-m", "not llm_integration"],
     )
 
     log("Pipeline completed successfully")

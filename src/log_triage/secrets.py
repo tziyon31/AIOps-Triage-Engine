@@ -105,5 +105,9 @@ def get_openai_api_key_from_bitwarden(
 
 
 def create_openai_client() -> OpenAI:
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if api_key:
+        return OpenAI(api_key=api_key)
+
     api_key = get_openai_api_key_from_bitwarden(BITWARDEN_SECRET_NAME)
     return OpenAI(api_key=api_key)

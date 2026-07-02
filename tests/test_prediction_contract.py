@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -6,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from src.log_triage.schemas import DecisionObject
-from src.log_triage.secrets import require_bitwarden_session
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,12 +37,17 @@ ALLOWED_DECISION_FIELDS = REQUIRED_DECISION_FIELDS | OPTIONAL_DECISION_FIELDS
 
 
 def run_predict(args: list[str], expected_returncode: int = 0) -> dict:
+    env = {
+        **os.environ,
+        "LOG_TRIAGE_DISABLE_LLM": "1",
+    }
     completed = subprocess.run(
         [sys.executable, "-m", "src.log_triage.predict", *args],
         cwd=PROJECT_ROOT,
         text=True,
         capture_output=True,
         check=False,
+        env=env,
     )
 
     assert completed.returncode == expected_returncode, (
@@ -84,11 +89,6 @@ def assert_decision_contract(decision: dict) -> None:
 
 @pytest.mark.contract
 def test_predict_normal_input_returns_valid_decision_object():
-    try:
-        require_bitwarden_session()
-    except RuntimeError as error:
-        pytest.fail(str(error))
-
     raw_log = (
         "2026-05-03 09:12:11 ERROR payments "
         "db timeout after retries cpu 93 memory 84"

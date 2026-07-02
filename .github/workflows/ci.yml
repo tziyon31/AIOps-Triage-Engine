@@ -7,11 +7,14 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   quality:
-    name: Tests and contract checks
+    name: quality
     runs-on: ubuntu-latest
+    env:
+      LOG_TRIAGE_DISABLE_LLM: "1"
 
     steps:
       - name: Checkout repository
@@ -37,19 +40,24 @@ jobs:
         run: |
           python -m compileall src tests scripts
 
-      - name: Run unit tests
+      - name: Run deterministic tests
         run: |
-          python -m pytest -v
+          python -m pytest -v -m "not llm_integration"
 
       - name: Run contract tests
         run: |
-          python -m pytest -m contract -v -s
+          python -m pytest -m "contract and not llm_integration" -v -s
 
   pipeline-artifact:
-    name: Pipeline and artifact upload
+    name: pipeline-artifact
     runs-on: ubuntu-latest
     needs: quality
     if: github.ref == 'refs/heads/main'
+    env:
+      LOG_TRIAGE_DISABLE_LLM: "1"
+    outputs:
+      artifact_name:
+        value: ${{ steps.latest_artifact.outputs.artifact_name }}
 
     steps:
       - name: Checkout repository
@@ -71,15 +79,71 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f pyproject.toml ]; then pip install -e .; fi
 
-      - name: Run full pipeline
+      - name: Run full deterministic pipeline
         run: |
           chmod +x run_pipeline.sh
           ./run_pipeline.sh
 
+      - name: Find latest artifact
+        id: latest_artifact
+        run: |
+          latest="$(ls -td artifacts/log-triage-* | head -n 1)"
+          echo "artifact_dir=$latest" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$(basename "$latest")" >> "$GITHUB_OUTPUT"
+          echo "Latest artifact: $latest"
+
       - name: Upload trained artifact
         uses: actions/upload-artifact@v4
         with:
-          name: log-triage-artifacts
-          path: artifacts/
+          name: log-triage-artifact
+          path: ${{ steps.latest_artifact.outputs.artifact_dir }}
           if-no-files-found: error
           retention-days: 7
+
+  llm-integration:
+    name: llm-integration
+    runs-on: ubuntu-latest
+    needs: pipeline-artifact
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    env:
+      LOG_TRIAGE_ENABLE_LLM_INTEGRATION: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+            setup.py
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e .; fi
+
+      - name: Download trained artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: log-triage-artifact
+          path: artifacts/_ci
+
+      - name: Restore artifact layout
+        run: |
+          mkdir -p "artifacts/${{ needs.pipeline-artifact.outputs.artifact_name }}"
+          mv artifacts/_ci/* "artifacts/${{ needs.pipeline-artifact.outputs.artifact_name }}/"
+          rmdir artifacts/_ci
+
+      - name: Run LLM integration test
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LOG_TRIAGE_DISABLE_LLM: "0"
+          LOG_TRIAGE_ENABLE_LLM_INTEGRATION: "1"
+        run: |
+          python -m pytest tests/test_llm_integration.py -v -s

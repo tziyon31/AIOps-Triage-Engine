@@ -33,6 +33,7 @@ from src.log_triage.config import (
     ARTIFACT_PATH,
     MIN_CONFIDENCE,
     REQUIRES_APPROVAL,
+    is_llm_disabled,
 )
 from src.log_triage.llm_fallback import create_openai_client
 from src.log_triage.pipeline import (
@@ -65,6 +66,14 @@ def load_runtime() -> DecisionRuntime:
         Expensive resources should be loaded once, not once per log.
     """
     artifact = load_artifact_bundle(ARTIFACT_PATH)
+
+    if is_llm_disabled():
+        return DecisionRuntime(
+            artifact=artifact,
+            client=None,
+            incident_memory=[],
+        )
+
     client = create_openai_client()
     incident_memory = build_incident_memory(client)
 
