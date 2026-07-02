@@ -145,6 +145,10 @@ LOG_TRIAGE_ENABLE_LLM_INTEGRATION=1 OPENAI_API_KEY=... pytest tests/test_llm_int
 
 `src/log_triage/config.py` loads YAML at import time and resolves the latest artifact path automatically.
 
+## Contributing
+
+Changes to `main` should go through a pull request. The required CI status check is **`quality`** (deterministic tests + contract). `pipeline-artifact` and `llm-integration` are informational and not merge blockers.
+
 ## Legacy
 
 Older standalone scripts are under `legacy/`. Use the packaged modules instead:
