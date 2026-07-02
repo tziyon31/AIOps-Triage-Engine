@@ -8,5 +8,8 @@ __pycache__/
 artifacts/*
 !artifacts/.gitkeep
 
+# Prediction audit log (append-only, local/CI)
+traces/
+
 # Legacy binary artifacts
 legacy/*.pkl

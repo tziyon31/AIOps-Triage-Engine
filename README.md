@@ -8,7 +8,7 @@ ML decision engine for DevOps log triage: parse a raw log line, classify it with
 Raw log → parse → features + TF-IDF → classifier
        → strategy router (fast path / embeddings / LLM)
        → Decision Object
-       → policy.validate() (optional gate)
+       → policy.validate()
 ```
 
 ## Project layout
