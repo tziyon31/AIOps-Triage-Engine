@@ -1,0 +1,50 @@
+2026-05-03 09:12:11 ERROR payments db timeout after retries cpu 92 memory 81 action open_ticket
+2026-05-03 09:13:02 INFO web request completed successfully cpu 35 memory 44 action ignore
+2026-05-03 09:14:44 ERROR api high latency detected cpu 88 memory 70 action scale_up
+2026-05-03 09:15:10 ERROR payments db timeout again cpu 91 action open_ticket
+2026-05-03 09:16:10 ERROR api high latency detected memory 74 action scale_up
+2026-05-03 09:17:00 ERROR web gateway timeout upstream cpu 78 memory 62 action open_ticket
+2026-05-03 09:18:00 INFO payments request completed successfully cpu 22 memory 40 action ignore
+2026-05-03 09:19:00 WARNING api shard lag on reads cpu 55 memory 58 action scale_up
+2026-05-03 09:20:00 ERROR payments db timeout on replica cpu 84 action open_ticket
+2026-05-03 09:21:00 ERROR web elevated read latency memory 71 action scale_up
+2026-05-03 09:22:00 INFO api cache miss storm cpu 18 memory 33 action ignore
+2026-05-03 09:23:00 WARNING payments queue depth alert cpu 61 memory 64 action scale_up
+2026-05-03 09:24:00 ERROR api db timeout during checkout cpu 90 memory 79 action open_ticket
+2026-05-03 09:25:00 INFO web health check ok cpu 12 memory 28 action ignore
+2026-05-03 09:26:00 ERROR payments high latency detected cpu 87 memory 73 action scale_up
+2026-05-03 09:27:00 WARNING web gateway timeout upstream cpu 69 action open_ticket
+2026-05-03 09:28:00 INFO api request completed successfully cpu 31 memory 45 action ignore
+2026-05-03 09:29:00 ERROR web high latency on search cpu 82 memory 76 action scale_up
+2026-05-03 09:30:00 ERROR payments db timeout after retries cpu 95 memory 88 action open_ticket
+2026-05-03 09:31:00 INFO web static assets served cpu 8 memory 20 action ignore
+2026-05-03 09:32:00 WARNING api queue depth alert cpu 52 memory 55 action scale_up
+2026-05-03 09:33:00 ERROR api db timeout again cpu 88 action open_ticket
+2026-05-03 09:34:00 ERROR payments elevated read latency memory 80 action scale_up
+2026-05-03 09:35:00 INFO payments nightly job completed cpu 25 memory 42 action ignore
+2026-05-03 09:36:00 WARNING web shard lag on reads cpu 48 memory 51 action scale_up
+2026-05-03 09:37:00 ERROR web db timeout on auth cpu 91 memory 85 action open_ticket
+2026-05-03 09:38:00 INFO api batch export completed cpu 40 memory 47 action ignore
+2026-05-03 09:39:00 ERROR api high latency detected cpu 86 memory 72 action scale_up
+2026-05-03 09:40:00 ERROR payments gateway timeout upstream cpu 77 memory 66 action open_ticket
+2026-05-03 09:41:00 INFO web request completed successfully cpu 28 memory 38 action ignore
+2026-05-03 09:42:00 WARNING payments queue depth alert cpu 57 memory 59 action scale_up
+2026-05-03 09:43:00 ERROR web db timeout after retries cpu 93 memory 82 action open_ticket
+2026-05-03 09:44:00 INFO api cache warm ok cpu 15 memory 24 action ignore
+2026-05-03 09:45:00 ERROR web high latency detected cpu 81 memory 69 action scale_up
+2026-05-03 09:46:00 WARNING api gateway timeout upstream cpu 73 action open_ticket
+2026-05-03 09:47:00 INFO payments request completed successfully cpu 33 memory 41 action ignore
+2026-05-03 09:48:00 ERROR payments elevated read latency memory 77 action scale_up
+2026-05-03 09:49:00 ERROR api db timeout during payout cpu 89 memory 84 action open_ticket
+2026-05-03 09:50:00 INFO web probe ok cpu 10 memory 22 action ignore
+2026-05-03 09:51:00 WARNING web shard lag on reads cpu 50 memory 54 action scale_up
+2026-05-03 09:52:00 ERROR api db timeout again cpu 90 action open_ticket
+2026-05-03 09:53:00 ERROR web high latency on checkout cpu 85 memory 74 action scale_up
+2026-05-03 09:54:00 INFO api request completed successfully cpu 27 memory 36 action ignore
+2026-05-03 09:55:00 WARNING payments queue depth alert cpu 54 memory 56 action scale_up
+2026-05-03 09:56:00 ERROR payments db timeout on ledger cpu 94 memory 86 action open_ticket
+2026-05-03 09:57:00 INFO web cache miss storm cpu 20 memory 35 action ignore
+2026-05-03 09:58:00 ERROR api high latency detected cpu 83 memory 71 action scale_up
+2026-05-03 09:59:00 WARNING api gateway timeout upstream cpu 71 action open_ticket
+2026-05-03 10:00:00 INFO payments request completed successfully cpu 29 memory 39 action ignore
+2026-05-03 10:01:00 ERROR payments elevated read latency memory 78 action scale_up

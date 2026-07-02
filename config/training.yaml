@@ -1,0 +1,19 @@
+artifact:
+  name: log-triage
+  major: 1
+  minor: 0
+  output_dir: artifacts
+
+raw_logs_path: data/raw_logs.txt
+random_seed: 42
+test_size: 0.4
+
+schema_version: v1
+artifact_type: log_triage_decision_engine
+
+tfidf:
+  ngram_range: [1, 1]
+
+model:
+  type: logistic_regression
+  max_iter: 1000

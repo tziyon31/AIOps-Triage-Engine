@@ -1,0 +1,5 @@
+2026-05-03 09:12:11 ERROR payments db timeout during payout cpu 93 memory 84 service payments
+2026-05-03 09:13:02 INFO api request completed successfully cpu 12 memory 24 service api
+2026-05-03 09:14:21 WARN storage shard lag on reads cpu 71 memory 65 service storage
+2026-05-03 09:15:10 ERROR checkout connection pool exhausted cpu 89 memory 79 service checkout
+2026-05-03 09:16:45 WARN worker queue depth alert growing fast cpu 76 memory 68 service worker

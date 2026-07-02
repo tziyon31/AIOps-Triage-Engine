@@ -1,0 +1,5 @@
+# Training defaults (optional; train code can load this in a later iteration)
+test_size: 0.4
+random_state: 42
+artifact_path: artifacts/log_triage_decision_engine_v1.pkl
+raw_logs_path: data/raw_logs.txt

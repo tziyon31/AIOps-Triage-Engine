@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.pytest_cache/
+
+# Trained model artifacts (regenerate with train)
+artifacts/*
+!artifacts/.gitkeep
+
+# Legacy binary artifacts
+legacy/*.pkl

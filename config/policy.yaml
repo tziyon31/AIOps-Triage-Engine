@@ -1,0 +1,27 @@
+min_confidence: 0.75
+similarity_threshold: 0.80
+
+allowed_actions:
+  - ignore
+  - open_ticket
+  - suggest_scale_up
+  - needs_more_context
+
+forbidden_actions:
+  - delete_resource
+  - change_iam
+  - terraform_apply
+  - kubectl_delete
+  - production_restart_without_approval
+
+action_risk:
+  ignore: low
+  open_ticket: low
+  suggest_scale_up: medium
+  needs_more_context: low
+
+requires_approval:
+  ignore: false
+  open_ticket: false
+  suggest_scale_up: true
+  needs_more_context: false
