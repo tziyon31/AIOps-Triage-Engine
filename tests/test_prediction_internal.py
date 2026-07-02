@@ -8,7 +8,6 @@ from src.log_triage.predict import build_classifier_decision
 from src.log_triage.schemas import DecisionObject, build_error_decision
 from src.log_triage.strategy_router import route_decision
 
-REQUIRED_FIELDS = set(DecisionObject.model_fields.keys())
 ALLOWED_RISK_LEVELS = {"low", "medium", "high"}
 
 SUCCESS_LOG = (
@@ -17,7 +16,9 @@ SUCCESS_LOG = (
 
 
 def assert_decision_schema(decision: dict) -> None:
-    for field in REQUIRED_FIELDS:
+    core_fields = {name for name in DecisionObject.model_fields if name != "trace"}
+
+    for field in core_fields:
         assert field in decision, f"missing required field: {field}"
 
     confidence = decision["confidence"]

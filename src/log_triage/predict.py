@@ -43,6 +43,7 @@ from src.log_triage.pipeline import (
 from src.log_triage.schemas import build_decision, build_error_decision
 from src.log_triage.similarity_search import build_incident_memory
 from src.log_triage.strategy_router import route_decision
+from src.log_triage.trace import attach_trace
 
 @dataclass
 class DecisionRuntime:
@@ -201,11 +202,14 @@ def predict_with_runtime(raw_log: str, runtime: DecisionRuntime) -> dict:
         raw_log=raw_log,
     )
 
-    return route_decision(
-        classifier_decision=classifier_decision,
-        incident_memory=runtime.incident_memory,
-        embedding_client=runtime.client,
-        llm_client=runtime.client,
+    return attach_trace(
+        route_decision(
+            classifier_decision=classifier_decision,
+            incident_memory=runtime.incident_memory,
+            embedding_client=runtime.client,
+            llm_client=runtime.client,
+        ),
+        runtime.artifact,
     )
 
 
@@ -281,20 +285,17 @@ def run_predictions(logs: list[str], runtime: DecisionRuntime) -> list[dict]:
             )
 
         except Exception as error:
+            error_decision = attach_trace(
+                build_error_decision(f"Prediction failed for this log: {error}"),
+                runtime.artifact,
+            )
             results.append(
                 {
                     "index": index,
                     "status": "error",
                     "raw_log": raw_log,
                     "error": str(error),
-                    "decision": {
-                        "strategy_used": "error_handler",
-                        "predicted_action": "needs_more_context",
-                        "confidence": 0.0,
-                        "risk_level": "low",
-                        "requires_approval": False,
-                        "reason": "Prediction failed for this log",
-                    },
+                    "decision": error_decision,
                 }
             )
 
@@ -340,15 +341,18 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     logs = collect_input_logs(args)
+    runtime = load_runtime()
 
     if not logs:
-        error_response = build_error_decision(
-            "Missing log input. Use positional log, --log, or --file."
+        error_response = attach_trace(
+            build_error_decision(
+                "Missing log input. Use positional log, --log, or --file."
+            ),
+            runtime.artifact,
         )
         print(json.dumps(error_response, indent=2))
         raise SystemExit(1)
 
-    runtime = load_runtime()
     results = run_predictions(logs, runtime)
 
     if len(results) == 1:

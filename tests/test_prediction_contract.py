@@ -18,6 +18,7 @@ REQUIRED_DECISION_FIELDS = {
     "requires_approval",
     "reason",
     "similar_incidents",
+    "trace",
 }
 
 # These are currently allowed metadata fields.
@@ -85,6 +86,30 @@ def assert_decision_contract(decision: dict) -> None:
     assert 0.0 <= decision["confidence"] <= 1.0
     assert decision["risk_level"] in {"low", "medium", "high"}
     assert isinstance(decision["similar_incidents"], list)
+
+    trace = decision["trace"]
+
+    required_trace_fields = {
+        "decision_id",
+        "created_at",
+        "artifact_id",
+        "artifact_path",
+        "run_id",
+        "git_sha",
+        "model_sha256",
+        "vectorizer_sha256",
+        "known_actions_sha256",
+        "config_sha256",
+        "training_data_sha256",
+    }
+
+    missing_trace_fields = required_trace_fields - set(trace)
+    assert not missing_trace_fields, f"Missing trace fields: {missing_trace_fields}"
+
+    assert len(trace["model_sha256"]) == 64
+    assert len(trace["config_sha256"]) == 64
+    assert len(trace["training_data_sha256"]) == 64
+    assert Path(trace["artifact_path"]).is_absolute()
 
 
 @pytest.mark.contract

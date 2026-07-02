@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from pathlib import Path
-import hashlib
 import json
 import subprocess
+from uuid import uuid4
 
 import joblib  # type: ignore[import-not-found]
 
@@ -22,6 +22,7 @@ from src.log_triage.artifact_version import (
     find_latest_artifact_for_version,
     parse_versioned_artifact_dir,
     resolve_patch,
+    sha256_file,
     sha256_json,
 )
 from src.log_triage.config import (
@@ -100,6 +101,7 @@ def build_decision_artifact(
     metrics: dict,
 ) -> dict:
     return {
+        "run_id": str(uuid4()),
         "model": model,
         "vectorizer": vectorizer,
         "manual_feature_names": manual_feature_names,
@@ -150,16 +152,6 @@ def create_artifact_dir(artifact: dict) -> Path:
     return artifact_dir
 
 
-def sha256_file(path) -> str:
-    hasher = hashlib.sha256()
-
-    with open(path, "rb") as file:
-        for chunk in iter(lambda: file.read(8192), b""):
-            hasher.update(chunk)
-
-    return hasher.hexdigest()
-
-
 def get_git_sha() -> str:
     try:
         return subprocess.check_output(
@@ -198,6 +190,7 @@ def build_manifest(
 
     manifest = {
         "artifact_id": artifact_id,
+        "run_id": artifact["run_id"],
         "created_at": artifact["created_at"],
         "git_sha": get_git_sha(),
         "schema_version": artifact["schema_version"],
@@ -212,6 +205,9 @@ def build_manifest(
             "vectorizer_sha256": sha256_file(vectorizer_path),
             "known_actions_sha256": sha256_file(known_actions_path),
             "config_sha256": sha256_json(config_snapshot),
+            "training_data_sha256": sha256_file(
+                artifact["training_config"]["config"]["raw_logs_path"]
+            ),
         },
         "training_config": artifact["training_config"],
         "decision_contract": artifact["decision_contract"],

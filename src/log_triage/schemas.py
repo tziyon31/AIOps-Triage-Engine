@@ -5,6 +5,20 @@ from pydantic import BaseModel, ConfigDict, Field
 RiskLevel = Literal["low", "medium", "high"]
 
 
+class DecisionTrace(BaseModel):
+    decision_id: str
+    created_at: str
+    artifact_id: str
+    artifact_path: str
+    run_id: str
+    git_sha: str
+    model_sha256: str
+    vectorizer_sha256: str
+    known_actions_sha256: str
+    config_sha256: str
+    training_data_sha256: str
+
+
 class DecisionObject(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -15,6 +29,7 @@ class DecisionObject(BaseModel):
     requires_approval: bool
     reason: str
     similar_incidents: list[dict[str, Any]] = Field(default_factory=list)
+    trace: DecisionTrace | None = None
 
 
 class PolicyResult(BaseModel):

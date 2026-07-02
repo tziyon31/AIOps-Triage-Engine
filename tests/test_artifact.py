@@ -60,6 +60,7 @@ def test_manifest_holds_metadata_not_model_objects():
 
     required_keys = {
         "artifact_id",
+        "run_id",
         "created_at",
         "git_sha",
         "schema_version",
@@ -80,9 +81,36 @@ def test_manifest_holds_metadata_not_model_objects():
         "vectorizer_sha256",
         "known_actions_sha256",
         "config_sha256",
+        "training_data_sha256",
     }
 
     for forbidden_key in ("model", "vectorizer", "known_actions"):
         assert forbidden_key not in manifest
 
     assert manifest["model_version"] == manifest["version"]["label"]
+
+
+def test_manifest_contains_traceability_hashes():
+    artifact_dir = _latest_versioned_artifact_dir()
+    manifest_path = artifact_dir / "manifest.json"
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert "run_id" in manifest
+    assert isinstance(manifest["run_id"], str)
+    assert manifest["run_id"]
+
+    assert "git_sha" in manifest
+    assert isinstance(manifest["git_sha"], str)
+    assert manifest["git_sha"]
+
+    hashes = manifest["hashes"]
+
+    assert "config_sha256" in hashes
+    assert len(hashes["config_sha256"]) == 64
+
+    assert "training_data_sha256" in hashes
+    assert len(hashes["training_data_sha256"]) == 64
+
+    assert "model_sha256" in hashes
+    assert len(hashes["model_sha256"]) == 64
