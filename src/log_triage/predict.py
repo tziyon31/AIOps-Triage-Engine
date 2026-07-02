@@ -40,10 +40,43 @@ from src.log_triage.pipeline import (
     extract_features,
     parse_log_line,
 )
+from src.log_triage.policy import validate
 from src.log_triage.schemas import build_decision, build_error_decision
 from src.log_triage.similarity_search import build_incident_memory
 from src.log_triage.strategy_router import route_decision
-from src.log_triage.trace import attach_trace
+from src.log_triage.trace import attach_trace, persist_prediction_trace
+
+POLICY_METADATA_KEYS = (
+    "input_text",
+    "raw_log",
+    "router_reason",
+    "summary",
+    "root_cause",
+    "missing_context",
+    "machine_context",
+    "original_prediction",
+)
+
+
+def apply_policy(decision: dict) -> dict:
+    """
+    Apply policy rules to a Decision Object.
+
+    Returns the policy-modified decision while preserving router/LLM metadata
+    fields that are not part of the core DecisionObject contract.
+    """
+    result = validate(decision)
+    output = dict(result["modified_decision"])
+
+    for key in POLICY_METADATA_KEYS:
+        if key in decision:
+            output[key] = decision[key]
+
+    if result["reason"] != "Decision allowed by policy.":
+        output["reason"] = f"{decision['reason']} [{result['reason']}]"
+
+    return output
+
 
 @dataclass
 class DecisionRuntime:
@@ -202,15 +235,19 @@ def predict_with_runtime(raw_log: str, runtime: DecisionRuntime) -> dict:
         raw_log=raw_log,
     )
 
-    return attach_trace(
-        route_decision(
-            classifier_decision=classifier_decision,
-            incident_memory=runtime.incident_memory,
-            embedding_client=runtime.client,
-            llm_client=runtime.client,
+    decision = attach_trace(
+        apply_policy(
+            route_decision(
+                classifier_decision=classifier_decision,
+                incident_memory=runtime.incident_memory,
+                embedding_client=runtime.client,
+                llm_client=runtime.client,
+            )
         ),
         runtime.artifact,
     )
+    persist_prediction_trace(raw_log=raw_log, decision=decision)
+    return decision
 
 
 def read_logs_from_file(file_path: str) -> list[str]:
@@ -286,9 +323,12 @@ def run_predictions(logs: list[str], runtime: DecisionRuntime) -> list[dict]:
 
         except Exception as error:
             error_decision = attach_trace(
-                build_error_decision(f"Prediction failed for this log: {error}"),
+                apply_policy(
+                    build_error_decision(f"Prediction failed for this log: {error}")
+                ),
                 runtime.artifact,
             )
+            persist_prediction_trace(raw_log=raw_log, decision=error_decision)
             results.append(
                 {
                     "index": index,
@@ -345,11 +385,14 @@ def main() -> None:
 
     if not logs:
         error_response = attach_trace(
-            build_error_decision(
-                "Missing log input. Use positional log, --log, or --file."
+            apply_policy(
+                build_error_decision(
+                    "Missing log input. Use positional log, --log, or --file."
+                )
             ),
             runtime.artifact,
         )
+        persist_prediction_trace(raw_log="", decision=error_response)
         print(json.dumps(error_response, indent=2))
         raise SystemExit(1)
 
