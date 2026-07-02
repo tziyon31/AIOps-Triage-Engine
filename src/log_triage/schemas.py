@@ -14,7 +14,26 @@ class DecisionObject(BaseModel):
     risk_level: RiskLevel
     requires_approval: bool
     reason: str
-    similar_incidents: list[dict[str, Any]] = []
+    similar_incidents: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PolicyResult(BaseModel):
+    allowed: bool
+    reason: str
+    modified_decision: DecisionObject
+
+
+class ApprovalPolicy(BaseModel):
+    min_confidence: float = Field(ge=0.0, le=1.0)
+
+
+class PolicyEngineConfig(BaseModel):
+    """Subset of policy.yaml used by policy.validate()."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    forbidden_actions: list[str]
+    approval: ApprovalPolicy
 
 
 def build_decision(**kwargs) -> dict:

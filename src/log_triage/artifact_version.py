@@ -160,6 +160,15 @@ def find_latest_artifact_model_path(training_config: dict[str, Any]) -> Path | N
     return model_path
 
 
+def find_latest_artifact_dir(training_config: dict[str, Any]) -> Path | None:
+    model_path = find_latest_artifact_model_path(training_config)
+
+    if model_path is None:
+        return None
+
+    return model_path.parent
+
+
 def load_artifact_bundle(artifact_path: str | Path) -> dict[str, Any]:
     artifact_path = Path(artifact_path)
 

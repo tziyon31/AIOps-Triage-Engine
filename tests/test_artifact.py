@@ -1,0 +1,86 @@
+import json
+from pathlib import Path
+
+import joblib  # type: ignore[import-not-found]
+import pytest
+from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore[import-not-found]
+from sklearn.linear_model import LogisticRegression  # type: ignore[import-not-found]
+
+from src.log_triage.artifact_version import find_latest_artifact_dir
+from src.log_triage.config import load_training_config
+
+
+def _latest_versioned_artifact_dir() -> Path:
+    artifact_dir = find_latest_artifact_dir(load_training_config())
+    if artifact_dir is None:
+        pytest.skip("no versioned artifacts found")
+    return artifact_dir
+
+
+def test_latest_artifact_dir_has_required_files():
+    artifact_dir = _latest_versioned_artifact_dir()
+
+    assert (artifact_dir / "model.pkl").exists()
+    assert (artifact_dir / "vectorizer.pkl").exists()
+    assert (artifact_dir / "known_actions.json").exists()
+    assert (artifact_dir / "manifest.json").exists()
+
+
+def test_model_pkl_contains_only_model():
+    artifact_dir = _latest_versioned_artifact_dir()
+    model_obj = joblib.load(artifact_dir / "model.pkl")
+
+    assert not isinstance(model_obj, dict)
+    assert isinstance(model_obj, LogisticRegression)
+
+
+def test_vectorizer_pkl_contains_only_vectorizer():
+    artifact_dir = _latest_versioned_artifact_dir()
+    vectorizer = joblib.load(artifact_dir / "vectorizer.pkl")
+
+    assert isinstance(vectorizer, TfidfVectorizer)
+    assert hasattr(vectorizer, "transform")
+
+
+def test_known_actions_json_is_action_mapping_only():
+    artifact_dir = _latest_versioned_artifact_dir()
+
+    with (artifact_dir / "known_actions.json").open("r", encoding="utf-8") as file:
+        known_actions = json.load(file)
+
+    assert isinstance(known_actions, list)
+    assert all(isinstance(action, str) for action in known_actions)
+
+
+def test_manifest_holds_metadata_not_model_objects():
+    artifact_dir = _latest_versioned_artifact_dir()
+
+    with (artifact_dir / "manifest.json").open("r", encoding="utf-8") as file:
+        manifest = json.load(file)
+
+    required_keys = {
+        "artifact_id",
+        "created_at",
+        "git_sha",
+        "schema_version",
+        "model_version",
+        "artifact_type",
+        "files",
+        "hashes",
+        "training_config",
+        "decision_contract",
+        "metrics",
+        "version",
+    }
+    assert required_keys.issubset(manifest.keys())
+
+    assert set(manifest["files"].keys()) == {"model", "vectorizer", "known_actions"}
+    assert set(manifest["hashes"].keys()) == {
+        "model_sha256",
+        "vectorizer_sha256",
+        "known_actions_sha256",
+        "config_sha256",
+    }
+
+    for forbidden_key in ("model", "vectorizer", "known_actions"):
+        assert forbidden_key not in manifest

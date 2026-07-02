@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.log_triage.schemas import DecisionObject
+from src.log_triage.secrets import require_bitwarden_session
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -84,8 +84,10 @@ def assert_decision_contract(decision: dict) -> None:
 
 @pytest.mark.contract
 def test_predict_normal_input_returns_valid_decision_object():
-    if not os.environ.get("BW_SESSION"):
-        pytest.skip("BW_SESSION not set; contract test requires unlocked Bitwarden")
+    try:
+        require_bitwarden_session()
+    except RuntimeError as error:
+        pytest.fail(str(error))
 
     raw_log = (
         "2026-05-03 09:12:11 ERROR payments "

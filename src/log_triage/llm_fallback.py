@@ -1,37 +1,15 @@
 import json
-import subprocess
 
 from openai import OpenAI
 
 from src.log_triage.config import (
     ACTION_RISK,
     ALLOWED_ACTIONS,
-    BITWARDEN_SECRET_NAME,
     LLM_MODEL,
     MIN_CONFIDENCE,
     REQUIRES_APPROVAL,
 )
-
-
-def get_openai_api_key_from_bitwarden(secret_name: str) -> str:
-    completed_process = subprocess.run(
-        ["bw", "get", "password", secret_name],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    api_key = completed_process.stdout.strip()
-
-    if not api_key:
-        raise RuntimeError(f"Empty secret value: {secret_name}")
-
-    return api_key
-
-
-def create_openai_client() -> OpenAI:
-    api_key = get_openai_api_key_from_bitwarden(BITWARDEN_SECRET_NAME)
-    return OpenAI(api_key=api_key)
+from src.log_triage.secrets import create_openai_client
 
 
 def extract_json_object(raw_text: str) -> dict:

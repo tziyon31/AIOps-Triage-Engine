@@ -1,9 +1,9 @@
 import math
-import subprocess
 
 from openai import OpenAI
 
-from src.log_triage.config import BITWARDEN_SECRET_NAME, EMBEDDING_MODEL, SIMILARITY_THRESHOLD
+from src.log_triage.config import EMBEDDING_MODEL, SIMILARITY_THRESHOLD
+from src.log_triage.secrets import create_openai_client
 
 
 PAST_INCIDENTS = [
@@ -44,27 +44,6 @@ PAST_INCIDENTS = [
         "known_action": "ignore",
     },
 ]
-
-
-def get_openai_api_key_from_bitwarden(secret_name: str) -> str:
-    completed_process = subprocess.run(
-        ["bw", "get", "password", secret_name],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    api_key = completed_process.stdout.strip()
-
-    if not api_key:
-        raise RuntimeError(f"Empty secret value: {secret_name}")
-
-    return api_key
-
-
-def create_openai_client() -> OpenAI:
-    api_key = get_openai_api_key_from_bitwarden(BITWARDEN_SECRET_NAME)
-    return OpenAI(api_key=api_key)
 
 
 def create_embedding(client: OpenAI, text: str) -> list[float]:

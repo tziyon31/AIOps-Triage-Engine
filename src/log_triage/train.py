@@ -45,6 +45,7 @@ from src.log_triage.pipeline import (
     extract_label,
     parse_log_line,
 )
+from src.log_triage.schemas import build_decision
 
 TRAINING_CONFIG = load_training_config()
 TEST_SIZE = TRAINING_CONFIG["test_size"]
@@ -367,36 +368,34 @@ def build_decision_object(model, X_single, original_text):
     confidence = float(probabilities[best_index])
 
     if confidence < MIN_CONFIDENCE:
-        return {
-            "strategy_used": "manual_features_plus_tfidf",
-            "predicted_action": "needs_more_context",
-            "original_prediction": original_prediction,
-            "confidence": round(confidence, 4),
-            "risk_level": ACTION_RISK["needs_more_context"],
-            "requires_approval": REQUIRES_APPROVAL["needs_more_context"],
-            "reason": (
+        return build_decision(
+            strategy_used="manual_features_plus_tfidf",
+            predicted_action="needs_more_context",
+            original_prediction=original_prediction,
+            confidence=round(confidence, 4),
+            risk_level=ACTION_RISK["needs_more_context"],
+            requires_approval=REQUIRES_APPROVAL["needs_more_context"],
+            reason=(
                 f"Low confidence prediction. Model suggested "
                 f"{original_prediction}, but confidence is below {MIN_CONFIDENCE}."
             ),
-            "input_text": original_text,
-        }
+            similar_incidents=[],
+            input_text=original_text,
+        )
 
-    predicted_action = original_prediction
-    risk_level = ACTION_RISK[predicted_action]
-    requires_approval = REQUIRES_APPROVAL[predicted_action]
-
-    return {
-        "strategy_used": "manual_features_plus_tfidf",
-        "predicted_action": predicted_action,
-        "confidence": round(confidence, 4),
-        "risk_level": risk_level,
-        "requires_approval": requires_approval,
-        "reason": (
-            f"Predicted {predicted_action} based on combined "
+    return build_decision(
+        strategy_used="manual_features_plus_tfidf",
+        predicted_action=original_prediction,
+        confidence=round(confidence, 4),
+        risk_level=ACTION_RISK[original_prediction],
+        requires_approval=REQUIRES_APPROVAL[original_prediction],
+        reason=(
+            f"Predicted {original_prediction} based on combined "
             "manual features and TF-IDF text signals."
         ),
-        "input_text": original_text,
-    }
+        similar_incidents=[],
+        input_text=original_text,
+    )
 
 
 def main():
@@ -486,7 +485,7 @@ def main():
             X_single=x_single,
             original_text=row["message"],
         )
-        print(decision)
+        print(json.dumps(decision, indent=2, sort_keys=True))
 
     artifact = build_decision_artifact(
         model=combined_model,

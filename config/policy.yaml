@@ -8,11 +8,16 @@ allowed_actions:
   - needs_more_context
 
 forbidden_actions:
+  - delete_database
+  - mass_rollback
   - delete_resource
   - change_iam
   - terraform_apply
   - kubectl_delete
   - production_restart_without_approval
+
+approval:
+  min_confidence: 0.70
 
 action_risk:
   ignore: low
