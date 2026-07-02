@@ -13,6 +13,14 @@ VERSIONED_ARTIFACT_DIR_PATTERN = re.compile(
     r"^(?P<name>.+)-v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)-(?P<date>\d{8})-(?P<time>\d{6})$"
 )
 
+CONTENT_HASH_KEYS = [
+    "model_sha256",
+    "vectorizer_sha256",
+    "known_actions_sha256",
+    "config_sha256",
+    "training_data_sha256",
+]
+
 
 def parse_versioned_artifact_dir(dir_name: str) -> dict[str, Any] | None:
     match = VERSIONED_ARTIFACT_DIR_PATTERN.match(dir_name)
@@ -44,17 +52,31 @@ def sha256_json(data: dict) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def sha256_file(path: str | Path) -> str:
+    path = Path(path)
+    hasher = hashlib.sha256()
+
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(8192), b""):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
+
+
 def build_content_hashes(artifact: dict) -> dict[str, str]:
     config_snapshot = {
         "training_config": artifact["training_config"],
         "decision_contract": artifact["decision_contract"],
     }
 
+    raw_logs_path = artifact["training_config"]["config"]["raw_logs_path"]
+
     return {
         "model_sha256": sha256_joblib_object(artifact["model"]),
         "vectorizer_sha256": sha256_joblib_object(artifact["vectorizer"]),
         "known_actions_sha256": sha256_known_actions(artifact["known_actions"]),
         "config_sha256": sha256_json(config_snapshot),
+        "training_data_sha256": sha256_file(raw_logs_path),
     }
 
 
@@ -101,6 +123,20 @@ def find_latest_artifact_for_version(
     return best_patch, best_hashes
 
 
+def content_hashes_changed(
+    current_hashes: dict[str, str],
+    last_hashes: dict[str, str] | None,
+) -> bool:
+    if last_hashes is None:
+        return True
+
+    for key in CONTENT_HASH_KEYS:
+        if current_hashes.get(key) != last_hashes.get(key):
+            return True
+
+    return False
+
+
 def resolve_patch(
     current_hashes: dict[str, str],
     last_patch: int,
@@ -108,9 +144,11 @@ def resolve_patch(
 ) -> int:
     if last_patch < 0:
         return 0
-    if last_hashes == current_hashes:
-        return last_patch
-    return last_patch + 1
+
+    if content_hashes_changed(current_hashes, last_hashes):
+        return last_patch + 1
+
+    return last_patch
 
 
 def build_versioned_artifact_dir_name(
@@ -179,10 +217,19 @@ def load_artifact_bundle(artifact_path: str | Path) -> dict[str, Any]:
         with known_actions_path.open("r", encoding="utf-8") as file:
             known_actions = json.load(file)
 
+        manifest_path = artifact_path.parent / "manifest.json"
+        if not manifest_path.exists():
+            raise ValueError(f"Artifact manifest not found: {manifest_path}")
+
+        with manifest_path.open("r", encoding="utf-8") as file:
+            manifest = json.load(file)
+
         return {
             "model": joblib.load(artifact_path),
             "vectorizer": joblib.load(vectorizer_path),
             "known_actions": known_actions,
+            "manifest": manifest,
+            "artifact_dir": str(artifact_path.parent.resolve()),
         }
 
     loaded = joblib.load(artifact_path)

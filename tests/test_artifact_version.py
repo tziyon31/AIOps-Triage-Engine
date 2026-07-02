@@ -38,6 +38,30 @@ def test_resolve_patch_changed_hashes_increments_patch():
     assert resolve_patch(new_hashes, last_patch=3, last_hashes=old_hashes) == 4
 
 
+def test_resolve_patch_changed_training_data_hash_increments_patch():
+    current_hashes = {
+        "model_sha256": "same-model",
+        "vectorizer_sha256": "same-vectorizer",
+        "known_actions_sha256": "same-actions",
+        "config_sha256": "same-config",
+        "training_data_sha256": "new-data",
+    }
+
+    last_hashes = {
+        "model_sha256": "same-model",
+        "vectorizer_sha256": "same-vectorizer",
+        "known_actions_sha256": "same-actions",
+        "config_sha256": "same-config",
+        "training_data_sha256": "old-data",
+    }
+
+    assert resolve_patch(
+        current_hashes=current_hashes,
+        last_patch=3,
+        last_hashes=last_hashes,
+    ) == 4
+
+
 def test_find_latest_artifact_for_version_uses_highest_patch(tmp_path: Path):
     name = "log-triage"
     major = 1
@@ -54,6 +78,7 @@ def test_find_latest_artifact_for_version_uses_highest_patch(tmp_path: Path):
             "vectorizer_sha256": "latest",
             "known_actions_sha256": "latest",
             "config_sha256": "latest",
+            "training_data_sha256": "latest",
         }
     }
     with (second / "manifest.json").open("w", encoding="utf-8") as file:
