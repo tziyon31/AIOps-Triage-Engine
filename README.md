@@ -128,7 +128,7 @@ Steps (in order):
 
 ```bash
 # Deterministic tests (default in CI)
-LOG_TRIAGE_DISABLE_LLM=1 pytest -v -m "not llm_integration"
+LOG_TRIAGE_DISABLE_LLM=1 pytest -v -m "not integration and not llm_integration"
 
 # Public predict CLI contract (no Bitwarden required)
 LOG_TRIAGE_DISABLE_LLM=1 pytest -m contract -v
@@ -147,7 +147,7 @@ LOG_TRIAGE_ENABLE_LLM_INTEGRATION=1 OPENAI_API_KEY=... pytest tests/test_llm_int
 
 ## Contributing
 
-Changes to `main` should go through a pull request. The required CI status check is **`quality`** (deterministic tests + contract). `pipeline-artifact` and `llm-integration` are informational and not merge blockers.
+Changes to `main` should go through a pull request. The required CI status check is **`quality`** (deterministic tests + contract). `pipeline-artifact`, `traceability-integration`, and `llm-integration` are informational and not merge blockers.
 
 ## Legacy
 

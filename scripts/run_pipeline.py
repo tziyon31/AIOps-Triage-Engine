@@ -178,8 +178,15 @@ def main() -> int:
     validate_smoke_policy(smoke_decision)
 
     run_command(
-        "Full test suite",
-        [python, "-m", "pytest", "-v", "-m", "not llm_integration"],
+        "Full deterministic test suite",
+        [
+            python,
+            "-m",
+            "pytest",
+            "-v",
+            "-m",
+            "not integration and not llm_integration",
+        ],
     )
 
     log("Pipeline completed successfully")

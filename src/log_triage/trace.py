@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 DEFAULT_TRACE_PATH = Path("traces") / "prediction_trace.jsonl"
+
+
+def get_trace_path() -> Path:
+    return Path(os.getenv("LOG_TRIAGE_TRACE_PATH", str(DEFAULT_TRACE_PATH)))
 
 
 def utc_now() -> str:
@@ -41,9 +46,9 @@ def attach_trace(decision: dict[str, Any], artifact: dict[str, Any]) -> dict[str
 def persist_prediction_trace(
     raw_log: str,
     decision: dict[str, Any],
-    trace_path: str | Path = DEFAULT_TRACE_PATH,
+    trace_path: str | Path | None = None,
 ) -> None:
-    path = Path(trace_path)
+    path = Path(trace_path) if trace_path is not None else get_trace_path()
     path.parent.mkdir(parents=True, exist_ok=True)
 
     trace = decision.get("trace")
