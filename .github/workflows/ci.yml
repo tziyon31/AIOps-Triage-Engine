@@ -56,8 +56,7 @@ jobs:
     env:
       LOG_TRIAGE_DISABLE_LLM: "1"
     outputs:
-      artifact_name:
-        value: ${{ steps.latest_artifact.outputs.artifact_name }}
+      artifact_name: ${{ steps.latest_artifact.outputs.artifact_name }}
 
     steps:
       - name: Checkout repository
