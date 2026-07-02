@@ -84,3 +84,5 @@ def test_manifest_holds_metadata_not_model_objects():
 
     for forbidden_key in ("model", "vectorizer", "known_actions"):
         assert forbidden_key not in manifest
+
+    assert manifest["model_version"] == manifest["version"]["label"]

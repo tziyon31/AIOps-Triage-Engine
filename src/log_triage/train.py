@@ -30,7 +30,6 @@ from src.log_triage.config import (
     ARTIFACT_TYPE,
     FORBIDDEN_ACTIONS,
     MIN_CONFIDENCE,
-    MODEL_VERSION,
     REQUIRES_APPROVAL,
     SCHEMA_VERSION,
     SIMILARITY_THRESHOLD,
@@ -106,7 +105,6 @@ def build_decision_artifact(
         "manual_feature_names": manual_feature_names,
         "known_actions": known_actions,
         "schema_version": SCHEMA_VERSION,
-        "model_version": MODEL_VERSION,
         "artifact_type": ARTIFACT_TYPE,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "model_type": TRAINING_CONFIG["model"]["type"],
@@ -203,7 +201,6 @@ def build_manifest(
         "created_at": artifact["created_at"],
         "git_sha": get_git_sha(),
         "schema_version": artifact["schema_version"],
-        "model_version": artifact["model_version"],
         "artifact_type": artifact["artifact_type"],
         "files": {
             "model": "model.pkl",
@@ -223,6 +220,7 @@ def build_manifest(
 
     if version is not None:
         manifest["version"] = version
+        manifest["model_version"] = version["label"]
 
     return manifest
 
