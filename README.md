@@ -126,11 +126,13 @@ Steps (in order):
 
 ## Quality Gate
 
+![CI](https://github.com/tziyon31/AIOps-Triage-Engine/actions/workflows/ci.yml/badge.svg)
+
 This project includes an automated Quality Gate for the Decision Artifact pipeline.
 
 The gate ensures that a generated Decision Artifact is not uploaded by CI unless the required production checks pass.
 
-The gate validates that the artifact is:
+The Quality Gate validates that the artifact is:
 
 - packaged
 - identifiable
@@ -162,17 +164,20 @@ Main evidence files:
 - `manifest_hashes.json`
 - `policy_tests.txt`
 - `artifact_tests.txt`
+- `quality_gate_report_tests.txt`
 - `prediction_contract_tests.txt`
 - `traceability_integration_tests.txt`
 - `deterministic_test_suite.txt`
 - `smoke_prediction_output.json`
 
-In CI, the workflow uploads two artifacts after the Quality Gate passes:
+CI workflow: https://github.com/tziyon31/AIOps-Triage-Engine/actions/workflows/ci.yml
+
+In CI, the workflow uploads two artifacts **only after** the Quality Gate passes:
 
 - `decision-artifact-<pipeline_run_id>-<model_version>`
 - `quality-gate-evidence-<pipeline_run_id>-<model_version>`
 
-See the full explanation: [docs/quality_gate.md](docs/quality_gate.md)
+Full documentation: [docs/quality_gate.md](docs/quality_gate.md)
 
 **Current limitation:** GitHub Actions artifacts are used as registry-like storage for this learning slice. A full production setup would use an immutable external registry such as MLflow, S3 with versioning, or a dedicated model registry.
 
