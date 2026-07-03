@@ -55,7 +55,8 @@ jobs:
     env:
       LOG_TRIAGE_DISABLE_LLM: "1"
     outputs:
-      artifact_name: ${{ steps.latest_artifact.outputs.artifact_name }}
+      artifact_name: ${{ steps.quality_gate.outputs.artifact_id }}
+      decision_artifact_upload_name: decision-artifact-${{ steps.quality_gate.outputs.pipeline_run_id }}-${{ steps.quality_gate.outputs.model_version }}
 
     steps:
       - name: Checkout repository
@@ -77,26 +78,48 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f pyproject.toml ]; then pip install -e .; fi
 
-      - name: Run full deterministic pipeline
+      - name: Run pipeline
         run: |
           chmod +x run_pipeline.sh
           ./run_pipeline.sh
 
-      - name: Find latest artifact
-        id: latest_artifact
-        run: |
-          latest="$(ls -td artifacts/log-triage-* | head -n 1)"
-          echo "artifact_dir=$latest" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=$(basename "$latest")" >> "$GITHUB_OUTPUT"
-          echo "Latest artifact: $latest"
+      - name: Validate Quality Gate evidence
+        run: python scripts/validate_quality_gate_evidence.py
 
-      - name: Upload trained artifact
+      - name: Read Quality Gate metadata
+        id: quality_gate
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("evidence/quality_gate/quality_gate_report.json").read_text())
+          artifact = report["artifact"]
+
+          print(f"pipeline_run_id={report['pipeline_run_id']}")
+          print(f"artifact_id={artifact['artifact_id']}")
+          print(f"model_version={artifact['model_version']}")
+          print(f"artifact_dir={artifact['artifact_dir']}")
+          PY
+
+      - name: Upload Decision Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: log-triage-artifact
-          path: ${{ steps.latest_artifact.outputs.artifact_dir }}
+          name: decision-artifact-${{ steps.quality_gate.outputs.pipeline_run_id }}-${{ steps.quality_gate.outputs.model_version }}
+          path: ${{ steps.quality_gate.outputs.artifact_dir }}
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
+
+      - name: Upload Quality Gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-evidence-${{ steps.quality_gate.outputs.pipeline_run_id }}-${{ steps.quality_gate.outputs.model_version }}
+          path: evidence/quality_gate/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Add Quality Gate report to job summary
+        run: cat evidence/quality_gate/quality_gate_report.md >> "$GITHUB_STEP_SUMMARY"
 
   traceability-integration:
     name: traceability-integration
@@ -161,7 +184,7 @@ jobs:
       - name: Download trained artifact
         uses: actions/download-artifact@v4
         with:
-          name: log-triage-artifact
+          name: ${{ needs.pipeline-artifact.outputs.decision_artifact_upload_name }}
           path: artifacts/_ci
 
       - name: Restore artifact layout

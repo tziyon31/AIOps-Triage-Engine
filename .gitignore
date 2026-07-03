@@ -11,5 +11,8 @@ artifacts/*
 # Prediction audit log (append-only, local/CI)
 traces/
 
+# Generated Quality Gate evidence (regenerate with run_pipeline.sh)
+evidence/quality_gate/
+
 # Legacy binary artifacts
 legacy/*.pkl
