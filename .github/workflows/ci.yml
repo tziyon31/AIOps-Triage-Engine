@@ -82,6 +82,78 @@ jobs:
           chmod +x run_pipeline.sh
           ./run_pipeline.sh
 
+      - name: Validate Quality Gate evidence exists
+        run: |
+          test -f evidence/quality_gate/quality_gate_report.json
+          test -f evidence/quality_gate/quality_gate_report.md
+          test -f evidence/quality_gate/sample_decision.json
+          test -f evidence/quality_gate/manifest_hashes.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("evidence/quality_gate/quality_gate_report.json").read_text())
+
+          assert report["status"] == "passed"
+          assert report["quality_gate_report_version"] >= 1
+          assert report["report_generated_at"]
+          assert report["pipeline_run_id"]
+          assert report["git_sha"]
+
+          artifact = report["artifact"]
+          assert artifact["artifact_id"]
+          assert artifact["model_version"]
+          assert artifact["hashes"]
+
+          required_checks = [
+              "policy_tests",
+              "artifact_tests",
+              "quality_gate_report_tests",
+              "prediction_contract_tests",
+              "smoke_prediction",
+              "traceability_integration",
+              "deterministic_test_suite",
+          ]
+
+          missing = [
+              check for check in required_checks
+              if report["checks"].get(check) != "passed"
+          ]
+
+          if missing:
+              raise SystemExit(f"Missing or failed Quality Gate checks: {missing}")
+
+          print("Quality Gate evidence validated.")
+          PY
+
+      - name: Read Quality Gate metadata
+        id: quality_gate
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("evidence/quality_gate/quality_gate_report.json").read_text())
+          artifact = report["artifact"]
+
+          print(f"pipeline_run_id={report['pipeline_run_id']}")
+          print(f"artifact_id={artifact['artifact_id']}")
+          print(f"model_version={artifact['model_version']}")
+          PY
+
+      - name: Add Quality Gate report to job summary
+        run: |
+          cat evidence/quality_gate/quality_gate_report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Quality Gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-evidence-${{ steps.quality_gate.outputs.pipeline_run_id }}-${{ steps.quality_gate.outputs.model_version }}
+          path: evidence/quality_gate/
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Find latest artifact
         id: latest_artifact
         run: |
