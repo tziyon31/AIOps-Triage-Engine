@@ -285,6 +285,11 @@ def main() -> int:
     write_quality_gate_report(report=report)
     log("Quality Gate report written to evidence/quality_gate/")
 
+    run_command(
+        [python, "scripts/validate_quality_gate_evidence.py"],
+        "Validate Quality Gate evidence",
+    )
+
     log("Pipeline completed successfully")
     log(f"Fresh artifact: {after_artifact}")
     log("Exit code: 0")

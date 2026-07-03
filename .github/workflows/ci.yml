@@ -55,7 +55,8 @@ jobs:
     env:
       LOG_TRIAGE_DISABLE_LLM: "1"
     outputs:
-      artifact_name: ${{ steps.latest_artifact.outputs.artifact_name }}
+      artifact_name: ${{ steps.quality_gate.outputs.artifact_id }}
+      decision_artifact_upload_name: decision-artifact-${{ steps.quality_gate.outputs.pipeline_run_id }}-${{ steps.quality_gate.outputs.model_version }}
 
     steps:
       - name: Checkout repository
@@ -77,55 +78,13 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f pyproject.toml ]; then pip install -e .; fi
 
-      - name: Run full deterministic pipeline
+      - name: Run pipeline
         run: |
           chmod +x run_pipeline.sh
           ./run_pipeline.sh
 
-      - name: Validate Quality Gate evidence exists
-        run: |
-          test -f evidence/quality_gate/quality_gate_report.json
-          test -f evidence/quality_gate/quality_gate_report.md
-          test -f evidence/quality_gate/sample_decision.json
-          test -f evidence/quality_gate/manifest_hashes.json
-
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          report = json.loads(Path("evidence/quality_gate/quality_gate_report.json").read_text())
-
-          assert report["status"] == "passed"
-          assert report["quality_gate_report_version"] >= 1
-          assert report["report_generated_at"]
-          assert report["pipeline_run_id"]
-          assert report["git_sha"]
-
-          artifact = report["artifact"]
-          assert artifact["artifact_id"]
-          assert artifact["model_version"]
-          assert artifact["hashes"]
-
-          required_checks = [
-              "policy_tests",
-              "artifact_tests",
-              "quality_gate_report_tests",
-              "prediction_contract_tests",
-              "smoke_prediction",
-              "traceability_integration",
-              "deterministic_test_suite",
-          ]
-
-          missing = [
-              check for check in required_checks
-              if report["checks"].get(check) != "passed"
-          ]
-
-          if missing:
-              raise SystemExit(f"Missing or failed Quality Gate checks: {missing}")
-
-          print("Quality Gate evidence validated.")
-          PY
+      - name: Validate Quality Gate evidence
+        run: python scripts/validate_quality_gate_evidence.py
 
       - name: Read Quality Gate metadata
         id: quality_gate
@@ -140,11 +99,16 @@ jobs:
           print(f"pipeline_run_id={report['pipeline_run_id']}")
           print(f"artifact_id={artifact['artifact_id']}")
           print(f"model_version={artifact['model_version']}")
+          print(f"artifact_dir={artifact['artifact_dir']}")
           PY
 
-      - name: Add Quality Gate report to job summary
-        run: |
-          cat evidence/quality_gate/quality_gate_report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Decision Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: decision-artifact-${{ steps.quality_gate.outputs.pipeline_run_id }}-${{ steps.quality_gate.outputs.model_version }}
+          path: ${{ steps.quality_gate.outputs.artifact_dir }}
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload Quality Gate evidence
         uses: actions/upload-artifact@v4
@@ -154,21 +118,8 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Find latest artifact
-        id: latest_artifact
-        run: |
-          latest="$(ls -td artifacts/log-triage-* | head -n 1)"
-          echo "artifact_dir=$latest" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=$(basename "$latest")" >> "$GITHUB_OUTPUT"
-          echo "Latest artifact: $latest"
-
-      - name: Upload trained artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: log-triage-artifact
-          path: ${{ steps.latest_artifact.outputs.artifact_dir }}
-          if-no-files-found: error
-          retention-days: 7
+      - name: Add Quality Gate report to job summary
+        run: cat evidence/quality_gate/quality_gate_report.md >> "$GITHUB_STEP_SUMMARY"
 
   traceability-integration:
     name: traceability-integration
@@ -233,7 +184,7 @@ jobs:
       - name: Download trained artifact
         uses: actions/download-artifact@v4
         with:
-          name: log-triage-artifact
+          name: ${{ needs.pipeline-artifact.outputs.decision_artifact_upload_name }}
           path: artifacts/_ci
 
       - name: Restore artifact layout
