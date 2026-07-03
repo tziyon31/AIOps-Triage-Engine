@@ -124,6 +124,58 @@ Steps (in order):
 
 `run_pipeline.sh` is a thin Bash wrapper (`set -euo pipefail`); logic lives in `scripts/run_pipeline.py`.
 
+## Quality Gate
+
+This project includes an automated Quality Gate for the Decision Artifact pipeline.
+
+The gate ensures that a generated Decision Artifact is not uploaded by CI unless the required production checks pass.
+
+The gate validates that the artifact is:
+
+- packaged
+- identifiable
+- loadable
+- contract-compatible
+- policy-checked
+- smoke-tested
+- traceable
+- supported by generated evidence
+
+Run the deterministic gate locally:
+
+```bash
+LOG_TRIAGE_DISABLE_LLM=1 ./run_pipeline.sh
+python scripts/validate_quality_gate_evidence.py
+```
+
+Generated evidence is written to:
+
+```text
+evidence/quality_gate/
+```
+
+Main evidence files:
+
+- `quality_gate_report.json`
+- `quality_gate_report.md`
+- `sample_decision.json`
+- `manifest_hashes.json`
+- `policy_tests.txt`
+- `artifact_tests.txt`
+- `prediction_contract_tests.txt`
+- `traceability_integration_tests.txt`
+- `deterministic_test_suite.txt`
+- `smoke_prediction_output.json`
+
+In CI, the workflow uploads two artifacts after the Quality Gate passes:
+
+- `decision-artifact-<pipeline_run_id>-<model_version>`
+- `quality-gate-evidence-<pipeline_run_id>-<model_version>`
+
+See the full explanation: [docs/quality_gate.md](docs/quality_gate.md)
+
+**Current limitation:** GitHub Actions artifacts are used as registry-like storage for this learning slice. A full production setup would use an immutable external registry such as MLflow, S3 with versioning, or a dedicated model registry.
+
 ## Tests
 
 ```bash
