@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import hashlib
 import json
 import os
 import subprocess
@@ -206,6 +207,30 @@ def build_mlflow_params() -> dict:
     }
 
 
+def compute_artifact_sha256_from_manifest(manifest: dict) -> str:
+    """
+    Build a stable artifact identity hash from the manifest content.
+
+    This is not a replacement for the per-file hashes.
+    It is a compact fingerprint for the artifact package identity.
+    """
+    artifact_identity = {
+        "schema_version": manifest.get("schema_version"),
+        "artifact_type": manifest.get("artifact_type"),
+        "files": manifest.get("files", {}),
+        "hashes": manifest.get("hashes", {}),
+        "decision_contract": manifest.get("decision_contract", {}),
+    }
+
+    encoded = json.dumps(
+        artifact_identity,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
     if not is_mlflow_enabled():
         print("\nMLflow logging skipped: MLFLOW_TRACKING_URI is not set.")
@@ -215,6 +240,9 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
 
     manifest_path = artifact_dir / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    hashes = manifest["hashes"]
+    artifact_sha256 = compute_artifact_sha256_from_manifest(manifest)
 
     for key, value in build_mlflow_params().items():
         if value is not None:
@@ -228,11 +256,24 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
         {
             "stage": "5",
             "component": "decision-engine",
-            "git_sha": get_git_sha(),
-            "artifact_id": artifact_dir.name,
-            "artifact_run_id": artifact["run_id"],
-            "model_version": manifest.get("model_version", "unknown"),
-            "training_data_sha256": manifest["hashes"]["training_data_sha256"],
+            # Source identity
+            "git_sha": manifest["git_sha"],
+            "config_sha256": hashes["config_sha256"],
+            "training_data_sha256": hashes["training_data_sha256"],
+            # Artifact identity
+            "artifact_id": manifest["artifact_id"],
+            "artifact_run_id": manifest["run_id"],
+            "artifact_version": manifest.get(
+                "model_version", manifest.get("version", "unknown")
+            ),
+            "artifact_sha256": artifact_sha256,
+            # Artifact internals
+            "model_sha256": hashes["model_sha256"],
+            "vectorizer_sha256": hashes["vectorizer_sha256"],
+            "known_actions_sha256": hashes["known_actions_sha256"],
+            # Promotion placeholder for this stage
+            "candidate_status": "not_evaluated",
+            "promotion_reason": "promotion_gate_not_implemented_yet",
             "quality_gate_status": "not_checked_in_train",
         }
     )
