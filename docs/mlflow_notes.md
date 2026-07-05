@@ -87,10 +87,25 @@ Useful metrics include:
 Useful tags include:
 
 - `git_sha`
+- `training_config_sha256`
+- `policy_sha256`
+- `config_sha256`
+- `training_data_sha256`
+- `artifact_sha256`
 - `artifact_id`
+- `artifact_version`
 - `quality_gate_status`
 - `stage`
-- `training_data_sha256`
+- `candidate_status`
+
+The manifest remains the source of truth. MLflow tags are an index for search, filtering, audit, and incident investigation.
+
+Validation:
+
+```bash
+.venv/bin/python scripts/validate_mlflow_hash_tags.py
+.venv/bin/python scripts/find_mlflow_runs_by_config_sha.py
+```
 
 Useful artifacts include:
 

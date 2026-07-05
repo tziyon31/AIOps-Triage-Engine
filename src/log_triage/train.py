@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import warnings
 from contextlib import nullcontext
@@ -24,13 +25,15 @@ from sklearn.metrics import (  # type: ignore[import-not-found]
 from sklearn.model_selection import train_test_split  # type: ignore[import-not-found]
 
 from src.log_triage.artifact_version import (
+    POLICY_CONFIG_PATH,
+    TRAINING_CONFIG_PATH,
+    build_artifact_file_hashes,
     build_content_hashes,
     build_versioned_artifact_dir_name,
     find_latest_artifact_for_version,
+    load_yaml_snapshot,
     parse_versioned_artifact_dir,
     resolve_patch,
-    sha256_file,
-    sha256_json,
 )
 from src.log_triage.config import (
     ACTION_RISK,
@@ -242,7 +245,6 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     hashes = manifest["hashes"]
-    artifact_sha256 = compute_artifact_sha256_from_manifest(manifest)
 
     for key, value in build_mlflow_params().items():
         if value is not None:
@@ -256,22 +258,21 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
         {
             "stage": "5",
             "component": "decision-engine",
-            # Source identity
             "git_sha": manifest["git_sha"],
+            "training_config_sha256": hashes["training_config_sha256"],
+            "policy_sha256": hashes["policy_sha256"],
             "config_sha256": hashes["config_sha256"],
             "training_data_sha256": hashes["training_data_sha256"],
-            # Artifact identity
             "artifact_id": manifest["artifact_id"],
             "artifact_run_id": manifest["run_id"],
             "artifact_version": manifest.get(
-                "model_version", manifest.get("version", "unknown")
+                "model_version",
+                manifest.get("version", "unknown"),
             ),
-            "artifact_sha256": artifact_sha256,
-            # Artifact internals
+            "artifact_sha256": compute_artifact_sha256_from_manifest(manifest),
             "model_sha256": hashes["model_sha256"],
             "vectorizer_sha256": hashes["vectorizer_sha256"],
             "known_actions_sha256": hashes["known_actions_sha256"],
-            # Promotion placeholder for this stage
             "candidate_status": "not_evaluated",
             "promotion_reason": "promotion_gate_not_implemented_yet",
             "quality_gate_status": "not_checked_in_train",
@@ -313,11 +314,7 @@ def build_manifest(
     artifact: dict,
 ) -> dict:
     artifact_id = artifact_dir.name
-
-    config_snapshot = {
-        "training_config": artifact["training_config"],
-        "decision_contract": artifact["decision_contract"],
-    }
+    policy_config_snapshot = load_yaml_snapshot(POLICY_CONFIG_PATH)
 
     parsed = parse_versioned_artifact_dir(artifact_id)
     version = None
@@ -342,17 +339,20 @@ def build_manifest(
             "model": "model.pkl",
             "vectorizer": "vectorizer.pkl",
             "known_actions": "known_actions.json",
+            "training_config": "training.yaml",
+            "policy": "policy.yaml",
         },
-        "hashes": {
-            "model_sha256": sha256_file(model_path),
-            "vectorizer_sha256": sha256_file(vectorizer_path),
-            "known_actions_sha256": sha256_file(known_actions_path),
-            "config_sha256": sha256_json(config_snapshot),
-            "training_data_sha256": sha256_file(
-                artifact["training_config"]["config"]["raw_logs_path"]
-            ),
-        },
+        "hashes": build_artifact_file_hashes(
+            model_path=model_path,
+            vectorizer_path=vectorizer_path,
+            known_actions_path=known_actions_path,
+            artifact=artifact,
+        ),
         "training_config": artifact["training_config"],
+        "policy_config": {
+            "source": "config/policy.yaml",
+            "config": policy_config_snapshot,
+        },
         "decision_contract": artifact["decision_contract"],
         "metrics": artifact["metrics"],
     }
@@ -376,6 +376,9 @@ def save_decision_artifact(artifact: dict) -> Path:
 
     with open(known_actions_path, "w", encoding="utf-8") as file:
         json.dump(artifact["known_actions"], file, indent=2)
+
+    shutil.copy2(TRAINING_CONFIG_PATH, artifact_dir / "training.yaml")
+    shutil.copy2(POLICY_CONFIG_PATH, artifact_dir / "policy.yaml")
 
     manifest = build_manifest(
         artifact_dir=artifact_dir,
