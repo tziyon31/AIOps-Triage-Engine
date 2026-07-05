@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import os
 import subprocess
+from contextlib import nullcontext
+from typing import cast
 from uuid import uuid4
 
 import joblib  # type: ignore[import-not-found]
@@ -13,6 +16,7 @@ from sklearn.metrics import (  # type: ignore[import-not-found]
     accuracy_score,
     classification_report,
     confusion_matrix,
+    f1_score,
 )
 from sklearn.model_selection import train_test_split  # type: ignore[import-not-found]
 
@@ -160,6 +164,81 @@ def get_git_sha() -> str:
         ).strip()
     except Exception:
         return "unknown"
+
+
+def is_mlflow_enabled() -> bool:
+    return bool(os.getenv("MLFLOW_TRACKING_URI")) and (
+        os.getenv("LOG_TRIAGE_DISABLE_MLFLOW") != "1"
+    )
+
+
+def mlflow_run_context():
+    if not is_mlflow_enabled():
+        return nullcontext(None)
+
+    import mlflow  # type: ignore[import-not-found]
+
+    experiment_name = os.getenv(
+        "MLFLOW_EXPERIMENT_NAME",
+        "log-triage-decision-engine",
+    )
+
+    mlflow.set_experiment(experiment_name)
+    return mlflow.start_run(run_name="train-decision-engine")
+
+
+def build_mlflow_params() -> dict:
+    tfidf_cfg = TRAINING_CONFIG.get("tfidf", {})
+
+    return {
+        "model_type": TRAINING_CONFIG["model"]["type"],
+        "model_max_iter": MODEL_MAX_ITER,
+        "random_seed": RANDOM_STATE,
+        "test_size": TEST_SIZE,
+        "tfidf_max_features": tfidf_cfg.get("max_features"),
+        "tfidf_ngram_range": str(tfidf_cfg.get("ngram_range")),
+        "schema_version": SCHEMA_VERSION,
+        "artifact_type": ARTIFACT_TYPE,
+    }
+
+
+def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
+    if not is_mlflow_enabled():
+        print("\nMLflow logging skipped: MLFLOW_TRACKING_URI is not set.")
+        return
+
+    import mlflow  # type: ignore[import-not-found]
+
+    manifest_path = artifact_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    for key, value in build_mlflow_params().items():
+        if value is not None:
+            mlflow.log_param(key, value)
+
+    for key, value in artifact["metrics"].items():
+        if isinstance(value, (int, float)):
+            mlflow.log_metric(key, float(value))
+
+    mlflow.set_tags(
+        {
+            "stage": "5",
+            "component": "decision-engine",
+            "git_sha": get_git_sha(),
+            "artifact_id": artifact_dir.name,
+            "artifact_run_id": artifact["run_id"],
+            "model_version": manifest.get("model_version", "unknown"),
+            "training_data_sha256": manifest["hashes"]["training_data_sha256"],
+            "quality_gate_status": "not_checked_in_train",
+        }
+    )
+
+    mlflow.log_artifacts(str(artifact_dir), artifact_path="decision_artifact")
+
+    active_run = mlflow.active_run()
+    if active_run is not None:
+        print(f"\nMLflow run logged: {active_run.info.run_id}")
+        print(f"MLflow artifact path: decision_artifact/{artifact_dir.name}")
 
 
 def build_manifest(
@@ -325,9 +404,13 @@ def print_mistakes(title, test_rows, predictions, actual_labels):
 def evaluate_model(title, model, X_test, y_test, test_rows):
     predictions = model.predict(X_test)
     accuracy = accuracy_score(y_test, predictions)
+    f1 = f1_score(
+        y_test, predictions, average="macro", zero_division=0  # type: ignore[arg-type]
+    )
 
     print(f"\n=== {title} ===")
     print("accuracy:", accuracy)
+    print("f1_macro:", f1)
 
     print("\nConfusion Matrix:")
     print(confusion_matrix(y_test, predictions, labels=list(range(len(KNOWN_ACTIONS)))))
@@ -343,13 +426,13 @@ def evaluate_model(title, model, X_test, y_test, test_rows):
             predictions,
             labels=list(range(len(KNOWN_ACTIONS))),
             target_names=KNOWN_ACTIONS,
-            zero_division=0,
+            zero_division=0,  # type: ignore[arg-type]
         )
     )
 
     print_mistakes(title, test_rows, predictions, y_test)
 
-    return accuracy, predictions
+    return accuracy, f1, predictions
 
 
 def build_decision_object(model, X_single, original_text):
@@ -393,111 +476,119 @@ def build_decision_object(model, X_single, original_text):
 
 
 def main():
-    raw_logs = load_raw_logs()
-    rows, skipped = build_rows(raw_logs)
+    with mlflow_run_context():
+        raw_logs = load_raw_logs()
+        rows, skipped = build_rows(raw_logs)
 
-    print("Dataset size:", len(rows))
-    print("Skipped examples:", len(skipped))
+        print("Dataset size:", len(rows))
+        print("Skipped examples:", len(skipped))
 
-    if skipped:
-        print("\nSkipped:")
-        for item in skipped:
-            print(item)
+        if skipped:
+            print("\nSkipped:")
+            for item in skipped:
+                print(item)
 
-    train_rows, test_rows = split_rows(rows)
+        train_rows, test_rows = split_rows(rows)
 
-    X_train_text, X_train_manual, y_train = unpack_rows(train_rows)
-    X_test_text, X_test_manual, y_test = unpack_rows(test_rows)
+        X_train_text, X_train_manual, y_train = unpack_rows(train_rows)
+        X_test_text, X_test_manual, y_test = unpack_rows(test_rows)
 
-    X_train_manual_sparse = csr_matrix(X_train_manual)
-    X_test_manual_sparse = csr_matrix(X_test_manual)
+        X_train_manual_sparse = csr_matrix(X_train_manual)
+        X_test_manual_sparse = csr_matrix(X_test_manual)
 
-    tfidf_cfg = TRAINING_CONFIG.get("tfidf", {})
-    vectorizer_kwargs = {}
-    if tfidf_cfg.get("max_features") is not None:
-        vectorizer_kwargs["max_features"] = tfidf_cfg["max_features"]
-    if "ngram_range" in tfidf_cfg:
-        vectorizer_kwargs["ngram_range"] = tuple(tfidf_cfg["ngram_range"])
+        tfidf_cfg = TRAINING_CONFIG.get("tfidf", {})
+        vectorizer_kwargs = {}
+        if tfidf_cfg.get("max_features") is not None:
+            vectorizer_kwargs["max_features"] = tfidf_cfg["max_features"]
+        if "ngram_range" in tfidf_cfg:
+            vectorizer_kwargs["ngram_range"] = tuple(tfidf_cfg["ngram_range"])
 
-    vectorizer = TfidfVectorizer(**vectorizer_kwargs)
-    X_train_tfidf = vectorizer.fit_transform(X_train_text)
-    X_test_tfidf = vectorizer.transform(X_test_text)
+        vectorizer = TfidfVectorizer(**vectorizer_kwargs)
+        X_train_tfidf = cast(csr_matrix, vectorizer.fit_transform(X_train_text))
+        X_test_tfidf = cast(csr_matrix, vectorizer.transform(X_test_text))
 
-    X_train_combined = hstack([X_train_manual_sparse, X_train_tfidf])
-    X_test_combined = hstack([X_test_manual_sparse, X_test_tfidf])
+        X_train_combined = hstack([X_train_manual_sparse, X_train_tfidf])
+        X_test_combined = hstack([X_test_manual_sparse, X_test_tfidf])
 
-    print("\n--- Feature Shapes ---")
-    print("X_train_manual shape:", X_train_manual_sparse.shape)
-    print("X_train_tfidf shape: ", X_train_tfidf.shape)
-    print("X_train_combined shape:", X_train_combined.shape)
-    print("manual feature count:", len(FEATURE_NAMES))
-    print("tfidf vocabulary size:", len(vectorizer.get_feature_names_out()))
+        print("\n--- Feature Shapes ---")
+        print("X_train_manual shape:", X_train_manual_sparse.shape)
+        print("X_train_tfidf shape: ", X_train_tfidf.shape)
+        print("X_train_combined shape:", X_train_combined.shape)
+        print("manual feature count:", len(FEATURE_NAMES))
+        print("tfidf vocabulary size:", len(vectorizer.get_feature_names_out()))
 
-    manual_model = LogisticRegression(max_iter=MODEL_MAX_ITER, random_state=RANDOM_STATE)
-    manual_model.fit(X_train_manual, y_train)
-
-    tfidf_model = LogisticRegression(max_iter=MODEL_MAX_ITER)
-    tfidf_model.fit(X_train_tfidf, y_train)
-
-    combined_model = LogisticRegression(max_iter=MODEL_MAX_ITER)
-    combined_model.fit(X_train_combined, y_train)
-
-    manual_accuracy, _ = evaluate_model(
-        "Manual Features Only",
-        manual_model,
-        X_test_manual,
-        y_test,
-        test_rows,
-    )
-
-    tfidf_accuracy, _ = evaluate_model(
-        "TF-IDF Only",
-        tfidf_model,
-        X_test_tfidf,
-        y_test,
-        test_rows,
-    )
-
-    combined_accuracy, _ = evaluate_model(
-        "Manual Features + TF-IDF",
-        combined_model,
-        X_test_combined,
-        y_test,
-        test_rows,
-    )
-
-    print("\n--- Summary ---")
-    print("approach | accuracy")
-    print(f"manual   | {manual_accuracy:.3f}")
-    print(f"tfidf    | {tfidf_accuracy:.3f}")
-    print(f"combined | {combined_accuracy:.3f}")
-
-    print("\n--- Decision Objects ---")
-    for row, x_single in zip(test_rows[:5], X_test_combined[:5]):
-        decision = build_decision_object(
-            model=combined_model,
-            X_single=x_single,
-            original_text=row["message"],
+        manual_model = LogisticRegression(
+            max_iter=MODEL_MAX_ITER, random_state=RANDOM_STATE
         )
-        print(json.dumps(decision, indent=2, sort_keys=True))
+        manual_model.fit(X_train_manual, y_train)
 
-    artifact = build_decision_artifact(
-        model=combined_model,
-        vectorizer=vectorizer,
-        manual_feature_names=MANUAL_FEATURE_NAMES,
-        known_actions=KNOWN_ACTIONS,
-        primary_model_accuracy=combined_accuracy,
-        test_size=len(y_test),
-        metrics={
-            "manual_accuracy": round(float(manual_accuracy), 4),
-            "tfidf_accuracy": round(float(tfidf_accuracy), 4),
-            "combined_accuracy": round(float(combined_accuracy), 4),
-            "manual_feature_count": len(MANUAL_FEATURE_NAMES),
-            "tfidf_vocabulary_size": len(vectorizer.get_feature_names_out()),
-        },
-    )
+        tfidf_model = LogisticRegression(max_iter=MODEL_MAX_ITER)
+        tfidf_model.fit(X_train_tfidf, y_train)
 
-    save_decision_artifact(artifact)
+        combined_model = LogisticRegression(max_iter=MODEL_MAX_ITER)
+        combined_model.fit(X_train_combined, y_train)
+
+        manual_accuracy, manual_f1, _ = evaluate_model(
+            "Manual Features Only",
+            manual_model,
+            X_test_manual,
+            y_test,
+            test_rows,
+        )
+
+        tfidf_accuracy, tfidf_f1, _ = evaluate_model(
+            "TF-IDF Only",
+            tfidf_model,
+            X_test_tfidf,
+            y_test,
+            test_rows,
+        )
+
+        combined_accuracy, combined_f1, _ = evaluate_model(
+            "Manual Features + TF-IDF",
+            combined_model,
+            X_test_combined,
+            y_test,
+            test_rows,
+        )
+
+        print("\n--- Summary ---")
+        print("approach | accuracy | f1_macro")
+        print(f"manual   | {manual_accuracy:.3f}    | {manual_f1:.3f}")
+        print(f"tfidf    | {tfidf_accuracy:.3f}    | {tfidf_f1:.3f}")
+        print(f"combined | {combined_accuracy:.3f}    | {combined_f1:.3f}")
+
+        print("\n--- Decision Objects ---")
+        for row, x_single in zip(test_rows[:5], X_test_combined[:5]):
+            decision = build_decision_object(
+                model=combined_model,
+                X_single=x_single,
+                original_text=row["message"],
+            )
+            print(json.dumps(decision, indent=2, sort_keys=True))
+
+        artifact = build_decision_artifact(
+            model=combined_model,
+            vectorizer=vectorizer,
+            manual_feature_names=MANUAL_FEATURE_NAMES,
+            known_actions=KNOWN_ACTIONS,
+            primary_model_accuracy=combined_accuracy,
+            test_size=len(y_test),
+            metrics={
+                "manual_accuracy": round(float(manual_accuracy), 4),
+                "tfidf_accuracy": round(float(tfidf_accuracy), 4),
+                "combined_accuracy": round(float(combined_accuracy), 4),
+                "f1_macro": round(float(combined_f1), 4),
+                "manual_f1_macro": round(float(manual_f1), 4),
+                "tfidf_f1_macro": round(float(tfidf_f1), 4),
+                "combined_f1_macro": round(float(combined_f1), 4),
+                "manual_feature_count": len(MANUAL_FEATURE_NAMES),
+                "tfidf_vocabulary_size": len(vectorizer.get_feature_names_out()),
+            },
+        )
+
+        artifact_dir = save_decision_artifact(artifact)
+        log_mlflow_outputs(artifact=artifact, artifact_dir=artifact_dir)
 
 
 if __name__ == "__main__":

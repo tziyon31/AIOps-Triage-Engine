@@ -63,6 +63,33 @@ artifacts/log-triage-v{major}.{minor}.{patch}-{YYYYMMDD-HHMMSS}/
 python -m src.log_triage.train
 ```
 
+## MLflow Local Tracking
+
+This project supports MLflow tracking for training experiments.
+
+For local development, start a local MLflow Tracking Server:
+
+```bash
+mlflow server \
+  --backend-store-uri sqlite:///$(pwd)/.mlflow/mlflow.db \
+  --default-artifact-root $(pwd)/.mlflow/artifacts \
+  --host 127.0.0.1 \
+  --port 5000
+```
+
+Then point training at the server:
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+python -m src.log_triage.train
+```
+
+Training skips MLflow when `MLFLOW_TRACKING_URI` is unset, or when `LOG_TRIAGE_DISABLE_MLFLOW=1` (used in CI and environments without a tracking server).
+
+For this local setup, MLflow state is stored under `.mlflow/` and should not be committed to Git.
+
+Full notes: [docs/mlflow_notes.md](docs/mlflow_notes.md)
+
 ## Predict
 
 ```bash
