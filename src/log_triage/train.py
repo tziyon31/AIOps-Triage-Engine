@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import os
 import subprocess
+import warnings
 from contextlib import nullcontext
 from typing import cast
 from uuid import uuid4
@@ -10,6 +11,7 @@ from uuid import uuid4
 import joblib  # type: ignore[import-not-found]
 
 from scipy.sparse import csr_matrix, hstack  # type: ignore[import-not-found]
+from sklearn.exceptions import ConvergenceWarning  # type: ignore[import-not-found]
 from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore[import-not-found]
 from sklearn.linear_model import LogisticRegression  # type: ignore[import-not-found]
 from sklearn.metrics import (  # type: ignore[import-not-found]
@@ -103,6 +105,7 @@ def build_decision_artifact(
     primary_model_accuracy: float,
     test_size: int,
     metrics: dict,
+    training_warnings: dict | None = None,
 ) -> dict:
     return {
         "run_id": str(uuid4()),
@@ -123,6 +126,7 @@ def build_decision_artifact(
             **metrics,
         },
         "training_config": build_training_config(),
+        "training_warnings": training_warnings or {},
     }
 
 
@@ -231,6 +235,25 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
             "training_data_sha256": manifest["hashes"]["training_data_sha256"],
             "quality_gate_status": "not_checked_in_train",
         }
+    )
+
+    training_warning_count = int(
+        artifact["metrics"].get("training_warning_count", 0)
+    )
+    convergence_warning_count = int(
+        artifact["metrics"].get("convergence_warning_count", 0)
+    )
+
+    mlflow.set_tags(
+        {
+            "has_training_warnings": str(training_warning_count > 0).lower(),
+            "has_convergence_warning": str(convergence_warning_count > 0).lower(),
+        }
+    )
+
+    mlflow.log_dict(
+        artifact.get("training_warnings", {}),
+        "diagnostics/training_warnings.json",
     )
 
     mlflow.log_artifacts(str(artifact_dir), artifact_path="decision_artifact")
@@ -475,8 +498,45 @@ def build_decision_object(model, X_single, original_text):
     )
 
 
+def fit_model_with_warning_capture(
+    *,
+    model_name: str,
+    model,
+    X_train,
+    y_train,
+    warning_registry: dict,
+):
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always")
+        model.fit(X_train, y_train)
+
+    warning_registry[model_name] = [
+        {
+            "category": warning.category.__name__,
+            "message": str(warning.message),
+        }
+        for warning in caught_warnings
+    ]
+
+    return model
+
+
+def count_warnings(training_warnings: dict) -> int:
+    return sum(len(items) for items in training_warnings.values())
+
+
+def count_convergence_warnings(training_warnings: dict) -> int:
+    return sum(
+        1
+        for items in training_warnings.values()
+        for item in items
+        if item["category"] == ConvergenceWarning.__name__
+    )
+
+
 def main():
     with mlflow_run_context():
+        training_warnings: dict = {}
         raw_logs = load_raw_logs()
         rows, skipped = build_rows(raw_logs)
 
@@ -520,13 +580,31 @@ def main():
         manual_model = LogisticRegression(
             max_iter=MODEL_MAX_ITER, random_state=RANDOM_STATE
         )
-        manual_model.fit(X_train_manual, y_train)
+        fit_model_with_warning_capture(
+            model_name="manual_features_only",
+            model=manual_model,
+            X_train=X_train_manual,
+            y_train=y_train,
+            warning_registry=training_warnings,
+        )
 
         tfidf_model = LogisticRegression(max_iter=MODEL_MAX_ITER)
-        tfidf_model.fit(X_train_tfidf, y_train)
+        fit_model_with_warning_capture(
+            model_name="tfidf_only",
+            model=tfidf_model,
+            X_train=X_train_tfidf,
+            y_train=y_train,
+            warning_registry=training_warnings,
+        )
 
         combined_model = LogisticRegression(max_iter=MODEL_MAX_ITER)
-        combined_model.fit(X_train_combined, y_train)
+        fit_model_with_warning_capture(
+            model_name="manual_features_plus_tfidf",
+            model=combined_model,
+            X_train=X_train_combined,
+            y_train=y_train,
+            warning_registry=training_warnings,
+        )
 
         manual_accuracy, manual_f1, _ = evaluate_model(
             "Manual Features Only",
@@ -567,6 +645,13 @@ def main():
             )
             print(json.dumps(decision, indent=2, sort_keys=True))
 
+        training_warning_count = count_warnings(training_warnings)
+        convergence_warning_count = count_convergence_warnings(training_warnings)
+
+        print("\n--- Training Warnings ---")
+        print("training_warning_count:", training_warning_count)
+        print("convergence_warning_count:", convergence_warning_count)
+
         artifact = build_decision_artifact(
             model=combined_model,
             vectorizer=vectorizer,
@@ -574,6 +659,7 @@ def main():
             known_actions=KNOWN_ACTIONS,
             primary_model_accuracy=combined_accuracy,
             test_size=len(y_test),
+            training_warnings=training_warnings,
             metrics={
                 "manual_accuracy": round(float(manual_accuracy), 4),
                 "tfidf_accuracy": round(float(tfidf_accuracy), 4),
@@ -584,6 +670,8 @@ def main():
                 "combined_f1_macro": round(float(combined_f1), 4),
                 "manual_feature_count": len(MANUAL_FEATURE_NAMES),
                 "tfidf_vocabulary_size": len(vectorizer.get_feature_names_out()),
+                "training_warning_count": training_warning_count,
+                "convergence_warning_count": convergence_warning_count,
             },
         )
 

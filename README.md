@@ -67,7 +67,7 @@ python -m src.log_triage.train
 
 This project supports MLflow tracking for training experiments.
 
-For local development, start a local MLflow Tracking Server:
+Start a local MLflow Tracking Server:
 
 ```bash
 mlflow server \
@@ -77,16 +77,32 @@ mlflow server \
   --port 5000
 ```
 
-Then point training at the server:
+In another terminal:
 
 ```bash
 export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
-python -m src.log_triage.train
+export MLFLOW_EXPERIMENT_NAME=log-triage-decision-engine
 ```
 
-Training skips MLflow when `MLFLOW_TRACKING_URI` is unset, or when `LOG_TRIAGE_DISABLE_MLFLOW=1` (used in CI and environments without a tracking server).
+Run training:
 
-For this local setup, MLflow state is stored under `.mlflow/` and should not be committed to Git.
+```bash
+.venv/bin/python -m src.log_triage.train
+```
+
+The MLflow UI is available at:
+
+http://127.0.0.1:5000
+
+MLflow tracks experiment runs, params, metrics, tags, warnings, and artifact links.
+
+Local MLflow state is stored under `.mlflow/` and must not be committed to Git.
+
+For deterministic CI / Quality Gate runs, MLflow logging is disabled with:
+
+```bash
+LOG_TRIAGE_DISABLE_MLFLOW=1
+```
 
 Full notes: [docs/mlflow_notes.md](docs/mlflow_notes.md)
 
