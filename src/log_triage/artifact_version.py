@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Any
 
 import joblib  # type: ignore[import-not-found]
+import yaml
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+TRAINING_CONFIG_PATH = _PROJECT_ROOT / "config" / "training.yaml"
+POLICY_CONFIG_PATH = _PROJECT_ROOT / "config" / "policy.yaml"
 
 VERSIONED_ARTIFACT_DIR_PATTERN = re.compile(
     r"^(?P<name>.+)-v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)-(?P<date>\d{8})-(?P<time>\d{6})$"
@@ -52,6 +57,31 @@ def sha256_json(data: dict) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def stable_json_sha256(value: dict) -> str:
+    encoded = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def load_yaml_snapshot(path: Path) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def build_combined_config_sha256(artifact: dict) -> str:
+    policy_config_snapshot = load_yaml_snapshot(POLICY_CONFIG_PATH)
+
+    return stable_json_sha256(
+        {
+            "training_config": artifact["training_config"],
+            "policy_config": policy_config_snapshot,
+        }
+    )
+
+
 def sha256_file(path: str | Path) -> str:
     path = Path(path)
     hasher = hashlib.sha256()
@@ -64,18 +94,35 @@ def sha256_file(path: str | Path) -> str:
 
 
 def build_content_hashes(artifact: dict) -> dict[str, str]:
-    config_snapshot = {
-        "training_config": artifact["training_config"],
-        "decision_contract": artifact["decision_contract"],
-    }
-
     raw_logs_path = artifact["training_config"]["config"]["raw_logs_path"]
 
     return {
         "model_sha256": sha256_joblib_object(artifact["model"]),
         "vectorizer_sha256": sha256_joblib_object(artifact["vectorizer"]),
         "known_actions_sha256": sha256_known_actions(artifact["known_actions"]),
-        "config_sha256": sha256_json(config_snapshot),
+        "training_config_sha256": sha256_file(TRAINING_CONFIG_PATH),
+        "policy_sha256": sha256_file(POLICY_CONFIG_PATH),
+        "config_sha256": build_combined_config_sha256(artifact),
+        "training_data_sha256": sha256_file(raw_logs_path),
+    }
+
+
+def build_artifact_file_hashes(
+    *,
+    model_path: Path,
+    vectorizer_path: Path,
+    known_actions_path: Path,
+    artifact: dict,
+) -> dict[str, str]:
+    raw_logs_path = artifact["training_config"]["config"]["raw_logs_path"]
+
+    return {
+        "model_sha256": sha256_file(model_path),
+        "vectorizer_sha256": sha256_file(vectorizer_path),
+        "known_actions_sha256": sha256_file(known_actions_path),
+        "training_config_sha256": sha256_file(TRAINING_CONFIG_PATH),
+        "policy_sha256": sha256_file(POLICY_CONFIG_PATH),
+        "config_sha256": build_combined_config_sha256(artifact),
         "training_data_sha256": sha256_file(raw_logs_path),
     }
 

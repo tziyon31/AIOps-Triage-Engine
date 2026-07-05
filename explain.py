@@ -6,10 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from src.log_triage.artifact_version import (
-    sha256_file,
-    sha256_json,
-)
+from src.log_triage.artifact_version import build_artifact_file_hashes
 
 DEFAULT_TRACE_PATH = Path("traces") / "prediction_trace.jsonl"
 
@@ -59,24 +56,12 @@ def recompute_live_hashes(
 ) -> dict[str, str]:
     files = manifest["files"]
 
-    model_path = artifact_dir / files["model"]
-    vectorizer_path = artifact_dir / files["vectorizer"]
-    known_actions_path = artifact_dir / files["known_actions"]
-
-    config_snapshot = {
-        "training_config": manifest["training_config"],
-        "decision_contract": manifest["decision_contract"],
-    }
-
-    raw_logs_path = manifest["training_config"]["config"]["raw_logs_path"]
-
-    return {
-        "model_sha256": sha256_file(model_path),
-        "vectorizer_sha256": sha256_file(vectorizer_path),
-        "known_actions_sha256": sha256_file(known_actions_path),
-        "config_sha256": sha256_json(config_snapshot),
-        "training_data_sha256": sha256_file(raw_logs_path),
-    }
+    return build_artifact_file_hashes(
+        model_path=artifact_dir / files["model"],
+        vectorizer_path=artifact_dir / files["vectorizer"],
+        known_actions_path=artifact_dir / files["known_actions"],
+        artifact={"training_config": manifest["training_config"]},
+    )
 
 
 def compare_hashes(

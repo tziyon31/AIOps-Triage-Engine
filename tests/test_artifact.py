@@ -24,6 +24,8 @@ def test_latest_artifact_dir_has_required_files():
     assert (artifact_dir / "vectorizer.pkl").exists()
     assert (artifact_dir / "known_actions.json").exists()
     assert (artifact_dir / "manifest.json").exists()
+    assert (artifact_dir / "training.yaml").exists()
+    assert (artifact_dir / "policy.yaml").exists()
 
 
 def test_model_pkl_contains_only_model():
@@ -75,11 +77,19 @@ def test_manifest_holds_metadata_not_model_objects():
     }
     assert required_keys.issubset(manifest.keys())
 
-    assert set(manifest["files"].keys()) == {"model", "vectorizer", "known_actions"}
+    assert set(manifest["files"].keys()) == {
+        "model",
+        "vectorizer",
+        "known_actions",
+        "training_config",
+        "policy",
+    }
     assert set(manifest["hashes"].keys()) == {
         "model_sha256",
         "vectorizer_sha256",
         "known_actions_sha256",
+        "training_config_sha256",
+        "policy_sha256",
         "config_sha256",
         "training_data_sha256",
     }
@@ -108,6 +118,12 @@ def test_manifest_contains_traceability_hashes():
 
     assert "config_sha256" in hashes
     assert len(hashes["config_sha256"]) == 64
+
+    assert "training_config_sha256" in hashes
+    assert len(hashes["training_config_sha256"]) == 64
+
+    assert "policy_sha256" in hashes
+    assert len(hashes["policy_sha256"]) == 64
 
     assert "training_data_sha256" in hashes
     assert len(hashes["training_data_sha256"]) == 64

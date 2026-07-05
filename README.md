@@ -96,6 +96,30 @@ http://127.0.0.1:5000
 
 MLflow tracks experiment runs, params, metrics, tags, warnings, and artifact links.
 
+### MLflow identity tags
+
+Every MLflow training run logs identity hashes as tags:
+
+- `git_sha` — source code revision used to build the artifact
+- `training_config_sha256` — hash of `config/training.yaml`
+- `policy_sha256` — hash of `config/policy.yaml`
+- `config_sha256` — combined hash of the final training config and full policy config
+- `training_data_sha256` — hash of the training data
+- `artifact_sha256` — compact fingerprint of the produced Decision Artifact
+- `artifact_id` — artifact directory/id
+- `artifact_version` — logical artifact version
+
+The manifest remains the source of truth. MLflow tags are used for search, filtering, audit, and incident investigation.
+
+Example:
+
+```bash
+.venv/bin/python scripts/validate_mlflow_hash_tags.py
+.venv/bin/python scripts/find_mlflow_runs_by_config_sha.py
+```
+
+If a buggy config or policy is discovered, MLflow can be filtered by `config_sha256` or `policy_sha256` to find all affected runs.
+
 Local MLflow state is stored under `.mlflow/` and must not be committed to Git.
 
 For deterministic CI / Quality Gate runs, MLflow logging is disabled with:
