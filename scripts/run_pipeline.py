@@ -169,6 +169,7 @@ def validate_smoke_policy(decision: dict[str, Any]) -> None:
 
 def main() -> int:
     os.environ.setdefault("LOG_TRIAGE_DISABLE_LLM", "1")
+    os.environ.setdefault("LOG_TRIAGE_DISABLE_MLFLOW", "1")
 
     python = sys.executable
     run_id = RUN_ID

@@ -14,5 +14,10 @@ traces/
 # Generated Quality Gate evidence (regenerate with run_pipeline.sh)
 evidence/quality_gate/
 
+# Local MLflow tracking state
+.mlflow/
+mlruns/
+mlflow.db
+
 # Legacy binary artifacts
 legacy/*.pkl
