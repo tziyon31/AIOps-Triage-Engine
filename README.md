@@ -15,7 +15,7 @@ Raw log → parse → features + TF-IDF → classifier
 
 | Path | Purpose |
 |------|---------|
-| `src/log_triage/` | Application code (parse, train, predict, router, policy, secrets) |
+| `src/log_triage/` | Application code (parse, train, predict, router, policy, evaluation, secrets) |
 | `config/` | `training.yaml` and `policy.yaml` |
 | `data/` | Raw logs (`raw_logs.txt`, `test_logs.txt`) |
 | `artifacts/` | Versioned trained bundles (not in git) |
@@ -54,10 +54,25 @@ artifacts/log-triage-v{major}.{minor}.{patch}-{YYYYMMDD-HHMMSS}/
 ├── model.pkl
 ├── vectorizer.pkl
 ├── known_actions.json
-└── manifest.json
+├── training.yaml
+├── policy.yaml
+├── manifest.json
+└── evaluation/
+    ├── combined_evaluation.json
+    ├── confusion_matrix.json
+    ├── confusion_matrix.md
+    ├── confusion_matrix.txt
+    ├── decision_quality.json
+    └── offline_latency.json
 ```
 
 `major` / `minor` come from `config/training.yaml`. `patch` is auto-computed from content hashes when training data or model content changes.
+
+During training, the held-out test split is also used to produce evaluation evidence:
+
+- **Classification** — per-class precision/recall/f1, confusion matrix, weakest class by recall
+- **Decision quality** — every test decision runs through `policy.validate()`; counts low confidence, approval required, policy blocks, and LLM fallback
+- **Offline latency** — p50/p95/max for `build_decision_object()` + `policy.validate()` on the test split (not production API latency)
 
 ```bash
 python -m src.log_triage.train
@@ -95,6 +110,32 @@ The MLflow UI is available at:
 http://127.0.0.1:5000
 
 MLflow tracks experiment runs, params, metrics, tags, warnings, and artifact links.
+
+### Training evaluation metrics
+
+When `MLFLOW_TRACKING_URI` is set, each training run logs:
+
+**Classification (combined model, test split)**
+
+- `combined_<class>_precision`, `combined_<class>_recall`, `combined_<class>_f1`
+- `combined_weakest_class_recall`
+- Artifacts: `evaluation/combined_evaluation.json`, `evaluation/confusion_matrix.json`
+- Human-readable: `evaluation/confusion_matrix.md`, `evaluation/confusion_matrix.txt`
+
+**Decision quality (test split, via `policy.validate()`)**
+
+- `decision_count`, `low_confidence_count`, `low_confidence_rate`
+- `approval_required_count`, `approval_required_rate`
+- `policy_block_count`, `llm_fallback_count`, `invalid_decision_schema_count`
+- Artifact: `evaluation/decision_quality.json`
+
+**Offline artifact smoke latency (not production SLA)**
+
+- `offline_latency_sample_count`, `offline_decision_latency_p50_ms`, `offline_decision_latency_p95_ms`, `offline_decision_latency_max_ms`
+- Artifact: `evaluation/offline_latency.json`
+- Tags: `latency_benchmark_scope`, `latency_benchmark_includes`, `latency_benchmark_excludes`
+
+Offline latency measures model predict + decision object creation + policy validation on the training test split. It does not include API server, network, concurrency, cold start, or real LLM calls.
 
 ### MLflow identity tags
 

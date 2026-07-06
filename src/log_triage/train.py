@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import warnings
 from contextlib import nullcontext
+from time import perf_counter
 from typing import cast
 from uuid import uuid4
 
@@ -52,7 +53,9 @@ from src.log_triage.evaluation import (
     build_confusion_matrix_markdown,
     build_confusion_matrix_text,
     build_decision_quality_evaluation,
+    build_offline_latency_evaluation,
     flatten_decision_quality_metrics,
+    flatten_offline_latency_metrics,
     flatten_per_class_metrics,
 )
 from src.log_triage.features import MANUAL_FEATURE_NAMES
@@ -311,6 +314,17 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
             combined_evaluation["weakest_class_by_recall"],
         )
 
+    offline_latency = artifact.get("evaluation", {}).get("offline_latency", {})
+
+    if offline_latency:
+        mlflow.set_tags(
+            {
+                "latency_benchmark_scope": offline_latency["scope"],
+                "latency_benchmark_includes": ",".join(offline_latency["includes"]),
+                "latency_benchmark_excludes": ",".join(offline_latency["excludes"]),
+            }
+        )
+
     mlflow.log_dict(
         artifact.get("training_warnings", {}),
         "diagnostics/training_warnings.json",
@@ -364,6 +378,7 @@ def build_manifest(
             "confusion_matrix_markdown": "evaluation/confusion_matrix.md",
             "confusion_matrix_text": "evaluation/confusion_matrix.txt",
             "decision_quality": "evaluation/decision_quality.json",
+            "offline_latency": "evaluation/offline_latency.json",
         },
         "hashes": build_artifact_file_hashes(
             model_path=model_path,
@@ -401,6 +416,7 @@ def save_decision_artifact(artifact: dict) -> Path:
     confusion_matrix_markdown_path = evaluation_dir / "confusion_matrix.md"
     confusion_matrix_text_path = evaluation_dir / "confusion_matrix.txt"
     decision_quality_path = evaluation_dir / "decision_quality.json"
+    offline_latency_path = evaluation_dir / "offline_latency.json"
 
     joblib.dump(artifact["model"], model_path)
     joblib.dump(artifact["vectorizer"], vectorizer_path)
@@ -433,6 +449,13 @@ def save_decision_artifact(artifact: dict) -> Path:
     with open(decision_quality_path, "w", encoding="utf-8") as file:
         json.dump(
             artifact.get("evaluation", {}).get("decision_quality", {}),
+            file,
+            indent=2,
+        )
+
+    with open(offline_latency_path, "w", encoding="utf-8") as file:
+        json.dump(
+            artifact.get("evaluation", {}).get("offline_latency", {}),
             file,
             indent=2,
         )
@@ -752,6 +775,8 @@ def main():
         decision_records = []
 
         for index, (row, x_single) in enumerate(zip(test_rows, X_test_combined)):
+            started_at = perf_counter()
+
             decision = build_decision_object(
                 model=combined_model,
                 X_single=x_single,
@@ -760,10 +785,13 @@ def main():
 
             policy_result = validate_policy(decision)
 
+            latency_ms = (perf_counter() - started_at) * 1000
+
             decision_records.append(
                 {
                     "decision": decision,
                     "policy_result": policy_result,
+                    "latency_ms": round(float(latency_ms), 4),
                 }
             )
 
@@ -796,6 +824,18 @@ def main():
         for key, value in decision_quality_metrics.items():
             print(f"{key}: {value}")
 
+        offline_latency_evaluation = build_offline_latency_evaluation(
+            decision_records=decision_records,
+        )
+
+        offline_latency_metrics = flatten_offline_latency_metrics(
+            offline_latency_evaluation
+        )
+
+        print("\n--- Offline Artifact Smoke Latency ---")
+        for key, value in offline_latency_metrics.items():
+            print(f"{key}: {value}")
+
         combined_per_class_metrics = flatten_per_class_metrics(
             prefix="combined",
             evaluation=combined_evaluation,
@@ -814,6 +854,7 @@ def main():
                 "tfidf": tfidf_evaluation,
                 "combined": combined_evaluation,
                 "decision_quality": decision_quality_evaluation,
+                "offline_latency": offline_latency_evaluation,
             },
             metrics={
                 "manual_accuracy": round(float(manual_accuracy), 4),
@@ -829,6 +870,7 @@ def main():
                 "convergence_warning_count": convergence_warning_count,
                 **combined_per_class_metrics,
                 **decision_quality_metrics,
+                **offline_latency_metrics,
             },
         )
 
