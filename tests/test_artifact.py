@@ -26,6 +26,10 @@ def test_latest_artifact_dir_has_required_files():
     assert (artifact_dir / "manifest.json").exists()
     assert (artifact_dir / "training.yaml").exists()
     assert (artifact_dir / "policy.yaml").exists()
+    assert (artifact_dir / "evaluation" / "combined_evaluation.json").exists()
+    assert (artifact_dir / "evaluation" / "confusion_matrix.json").exists()
+    assert (artifact_dir / "evaluation" / "confusion_matrix.md").exists()
+    assert (artifact_dir / "evaluation" / "confusion_matrix.txt").exists()
 
 
 def test_model_pkl_contains_only_model():
@@ -83,6 +87,10 @@ def test_manifest_holds_metadata_not_model_objects():
         "known_actions",
         "training_config",
         "policy",
+        "combined_evaluation",
+        "confusion_matrix",
+        "confusion_matrix_markdown",
+        "confusion_matrix_text",
     }
     assert set(manifest["hashes"].keys()) == {
         "model_sha256",
