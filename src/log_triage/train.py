@@ -47,6 +47,12 @@ from src.log_triage.config import (
     load_training_config,
 )
 from src.log_triage.data import load_raw_logs
+from src.log_triage.evaluation import (
+    build_classification_evaluation,
+    build_confusion_matrix_markdown,
+    build_confusion_matrix_text,
+    flatten_per_class_metrics,
+)
 from src.log_triage.features import MANUAL_FEATURE_NAMES
 from src.log_triage.pipeline import (
     FEATURE_NAMES,
@@ -110,6 +116,7 @@ def build_decision_artifact(
     test_size: int,
     metrics: dict,
     training_warnings: dict | None = None,
+    evaluation: dict | None = None,
 ) -> dict:
     return {
         "run_id": str(uuid4()),
@@ -131,6 +138,7 @@ def build_decision_artifact(
         },
         "training_config": build_training_config(),
         "training_warnings": training_warnings or {},
+        "evaluation": evaluation or {},
     }
 
 
@@ -293,6 +301,13 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
         }
     )
 
+    combined_evaluation = artifact.get("evaluation", {}).get("combined", {})
+    if combined_evaluation:
+        mlflow.set_tag(
+            "weakest_class_by_recall",
+            combined_evaluation["weakest_class_by_recall"],
+        )
+
     mlflow.log_dict(
         artifact.get("training_warnings", {}),
         "diagnostics/training_warnings.json",
@@ -341,6 +356,10 @@ def build_manifest(
             "known_actions": "known_actions.json",
             "training_config": "training.yaml",
             "policy": "policy.yaml",
+            "combined_evaluation": "evaluation/combined_evaluation.json",
+            "confusion_matrix": "evaluation/confusion_matrix.json",
+            "confusion_matrix_markdown": "evaluation/confusion_matrix.md",
+            "confusion_matrix_text": "evaluation/confusion_matrix.txt",
         },
         "hashes": build_artifact_file_hashes(
             model_path=model_path,
@@ -370,12 +389,41 @@ def save_decision_artifact(artifact: dict) -> Path:
     model_path = artifact_dir / "model.pkl"
     vectorizer_path = artifact_dir / "vectorizer.pkl"
     known_actions_path = artifact_dir / "known_actions.json"
+    evaluation_dir = artifact_dir / "evaluation"
+    evaluation_dir.mkdir(parents=True, exist_ok=True)
+
+    combined_evaluation_path = evaluation_dir / "combined_evaluation.json"
+    confusion_matrix_path = evaluation_dir / "confusion_matrix.json"
+    confusion_matrix_markdown_path = evaluation_dir / "confusion_matrix.md"
+    confusion_matrix_text_path = evaluation_dir / "confusion_matrix.txt"
 
     joblib.dump(artifact["model"], model_path)
     joblib.dump(artifact["vectorizer"], vectorizer_path)
 
     with open(known_actions_path, "w", encoding="utf-8") as file:
         json.dump(artifact["known_actions"], file, indent=2)
+
+    combined_evaluation = artifact.get("evaluation", {}).get("combined", {})
+
+    with open(combined_evaluation_path, "w", encoding="utf-8") as file:
+        json.dump(combined_evaluation, file, indent=2)
+
+    with open(confusion_matrix_path, "w", encoding="utf-8") as file:
+        json.dump(
+            {
+                "labels": combined_evaluation.get("labels", []),
+                "label_ids": combined_evaluation.get("label_ids", []),
+                "confusion_matrix": combined_evaluation.get("confusion_matrix", []),
+            },
+            file,
+            indent=2,
+        )
+
+    with open(confusion_matrix_markdown_path, "w", encoding="utf-8") as file:
+        file.write(build_confusion_matrix_markdown(combined_evaluation))
+
+    with open(confusion_matrix_text_path, "w", encoding="utf-8") as file:
+        file.write(build_confusion_matrix_text(combined_evaluation))
 
     shutil.copy2(TRAINING_CONFIG_PATH, artifact_dir / "training.yaml")
     shutil.copy2(POLICY_CONFIG_PATH, artifact_dir / "policy.yaml")
@@ -499,7 +547,14 @@ def evaluate_model(title, model, X_test, y_test, test_rows):
 
     print_mistakes(title, test_rows, predictions, y_test)
 
-    return accuracy, f1, predictions
+    evaluation = build_classification_evaluation(
+        y_true=y_test,
+        predictions=predictions,
+        labels=list(range(len(KNOWN_ACTIONS))),
+        target_names=KNOWN_ACTIONS,
+    )
+
+    return accuracy, f1, predictions, evaluation
 
 
 def build_decision_object(model, X_single, original_text):
@@ -650,7 +705,7 @@ def main():
             warning_registry=training_warnings,
         )
 
-        manual_accuracy, manual_f1, _ = evaluate_model(
+        manual_accuracy, manual_f1, _, manual_evaluation = evaluate_model(
             "Manual Features Only",
             manual_model,
             X_test_manual,
@@ -658,7 +713,7 @@ def main():
             test_rows,
         )
 
-        tfidf_accuracy, tfidf_f1, _ = evaluate_model(
+        tfidf_accuracy, tfidf_f1, _, tfidf_evaluation = evaluate_model(
             "TF-IDF Only",
             tfidf_model,
             X_test_tfidf,
@@ -666,7 +721,7 @@ def main():
             test_rows,
         )
 
-        combined_accuracy, combined_f1, _ = evaluate_model(
+        combined_accuracy, combined_f1, _, combined_evaluation = evaluate_model(
             "Manual Features + TF-IDF",
             combined_model,
             X_test_combined,
@@ -696,6 +751,11 @@ def main():
         print("training_warning_count:", training_warning_count)
         print("convergence_warning_count:", convergence_warning_count)
 
+        combined_per_class_metrics = flatten_per_class_metrics(
+            prefix="combined",
+            evaluation=combined_evaluation,
+        )
+
         artifact = build_decision_artifact(
             model=combined_model,
             vectorizer=vectorizer,
@@ -704,6 +764,11 @@ def main():
             primary_model_accuracy=combined_accuracy,
             test_size=len(y_test),
             training_warnings=training_warnings,
+            evaluation={
+                "manual": manual_evaluation,
+                "tfidf": tfidf_evaluation,
+                "combined": combined_evaluation,
+            },
             metrics={
                 "manual_accuracy": round(float(manual_accuracy), 4),
                 "tfidf_accuracy": round(float(tfidf_accuracy), 4),
@@ -716,6 +781,7 @@ def main():
                 "tfidf_vocabulary_size": len(vectorizer.get_feature_names_out()),
                 "training_warning_count": training_warning_count,
                 "convergence_warning_count": convergence_warning_count,
+                **combined_per_class_metrics,
             },
         )
 
