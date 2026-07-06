@@ -51,6 +51,8 @@ from src.log_triage.evaluation import (
     build_classification_evaluation,
     build_confusion_matrix_markdown,
     build_confusion_matrix_text,
+    build_decision_quality_evaluation,
+    flatten_decision_quality_metrics,
     flatten_per_class_metrics,
 )
 from src.log_triage.features import MANUAL_FEATURE_NAMES
@@ -61,6 +63,7 @@ from src.log_triage.pipeline import (
     extract_label,
     parse_log_line,
 )
+from src.log_triage.policy import validate as validate_policy
 from src.log_triage.schemas import build_decision
 
 TRAINING_CONFIG = load_training_config()
@@ -360,6 +363,7 @@ def build_manifest(
             "confusion_matrix": "evaluation/confusion_matrix.json",
             "confusion_matrix_markdown": "evaluation/confusion_matrix.md",
             "confusion_matrix_text": "evaluation/confusion_matrix.txt",
+            "decision_quality": "evaluation/decision_quality.json",
         },
         "hashes": build_artifact_file_hashes(
             model_path=model_path,
@@ -396,6 +400,7 @@ def save_decision_artifact(artifact: dict) -> Path:
     confusion_matrix_path = evaluation_dir / "confusion_matrix.json"
     confusion_matrix_markdown_path = evaluation_dir / "confusion_matrix.md"
     confusion_matrix_text_path = evaluation_dir / "confusion_matrix.txt"
+    decision_quality_path = evaluation_dir / "decision_quality.json"
 
     joblib.dump(artifact["model"], model_path)
     joblib.dump(artifact["vectorizer"], vectorizer_path)
@@ -424,6 +429,13 @@ def save_decision_artifact(artifact: dict) -> Path:
 
     with open(confusion_matrix_text_path, "w", encoding="utf-8") as file:
         file.write(build_confusion_matrix_text(combined_evaluation))
+
+    with open(decision_quality_path, "w", encoding="utf-8") as file:
+        json.dump(
+            artifact.get("evaluation", {}).get("decision_quality", {}),
+            file,
+            indent=2,
+        )
 
     shutil.copy2(TRAINING_CONFIG_PATH, artifact_dir / "training.yaml")
     shutil.copy2(POLICY_CONFIG_PATH, artifact_dir / "policy.yaml")
@@ -736,20 +748,53 @@ def main():
         print(f"combined | {combined_accuracy:.3f}    | {combined_f1:.3f}")
 
         print("\n--- Decision Objects ---")
-        for row, x_single in zip(test_rows[:5], X_test_combined[:5]):
+
+        decision_records = []
+
+        for index, (row, x_single) in enumerate(zip(test_rows, X_test_combined)):
             decision = build_decision_object(
                 model=combined_model,
                 X_single=x_single,
                 original_text=row["message"],
             )
-            print(json.dumps(decision, indent=2, sort_keys=True))
+
+            policy_result = validate_policy(decision)
+
+            decision_records.append(
+                {
+                    "decision": decision,
+                    "policy_result": policy_result,
+                }
+            )
+
+            if index < 5:
+                print(
+                    json.dumps(
+                        policy_result["modified_decision"],
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
 
         training_warning_count = count_warnings(training_warnings)
         convergence_warning_count = count_convergence_warnings(training_warnings)
 
+        decision_quality_evaluation = build_decision_quality_evaluation(
+            decision_records=decision_records,
+            min_confidence=MIN_CONFIDENCE,
+        )
+
+        decision_quality_metrics = flatten_decision_quality_metrics(
+            decision_quality_evaluation
+        )
+
         print("\n--- Training Warnings ---")
         print("training_warning_count:", training_warning_count)
         print("convergence_warning_count:", convergence_warning_count)
+
+        print("\n--- Decision Quality Metrics ---")
+        for key, value in decision_quality_metrics.items():
+            print(f"{key}: {value}")
 
         combined_per_class_metrics = flatten_per_class_metrics(
             prefix="combined",
@@ -768,6 +813,7 @@ def main():
                 "manual": manual_evaluation,
                 "tfidf": tfidf_evaluation,
                 "combined": combined_evaluation,
+                "decision_quality": decision_quality_evaluation,
             },
             metrics={
                 "manual_accuracy": round(float(manual_accuracy), 4),
@@ -782,6 +828,7 @@ def main():
                 "training_warning_count": training_warning_count,
                 "convergence_warning_count": convergence_warning_count,
                 **combined_per_class_metrics,
+                **decision_quality_metrics,
             },
         )
 

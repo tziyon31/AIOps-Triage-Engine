@@ -124,3 +124,83 @@ def build_confusion_matrix_text(evaluation: dict) -> str:
         lines.append(line)
 
     return "\n".join(lines) + "\n"
+
+
+def build_decision_quality_evaluation(
+    *,
+    decision_records: list[dict],
+    min_confidence: float,
+) -> dict:
+    decisions = []
+
+    low_confidence_count = 0
+    approval_required_count = 0
+    policy_block_count = 0
+    llm_fallback_count = 0
+    invalid_decision_schema_count = 0
+
+    for record in decision_records:
+        decision = record["decision"]
+        policy_result = record["policy_result"]
+        modified_decision = policy_result["modified_decision"]
+
+        confidence = float(modified_decision["confidence"])
+
+        if confidence < min_confidence:
+            low_confidence_count += 1
+
+        if modified_decision["requires_approval"]:
+            approval_required_count += 1
+
+        if not policy_result["allowed"]:
+            policy_block_count += 1
+
+        if modified_decision.get("strategy_used") == "llm_fallback":
+            llm_fallback_count += 1
+
+        decisions.append(
+            {
+                "input_text": modified_decision.get("input_text"),
+                "predicted_action": modified_decision["predicted_action"],
+                "confidence": confidence,
+                "risk_level": modified_decision["risk_level"],
+                "requires_approval": modified_decision["requires_approval"],
+                "policy_allowed": policy_result["allowed"],
+                "policy_reason": policy_result["reason"],
+            }
+        )
+
+    decision_count = len(decision_records)
+
+    low_confidence_rate = (
+        round(low_confidence_count / decision_count, 4)
+        if decision_count
+        else 0.0
+    )
+
+    approval_required_rate = (
+        round(approval_required_count / decision_count, 4)
+        if decision_count
+        else 0.0
+    )
+
+    return {
+        "thresholds": {
+            "min_confidence": min_confidence,
+        },
+        "metrics": {
+            "decision_count": decision_count,
+            "low_confidence_count": low_confidence_count,
+            "low_confidence_rate": low_confidence_rate,
+            "approval_required_count": approval_required_count,
+            "approval_required_rate": approval_required_rate,
+            "policy_block_count": policy_block_count,
+            "llm_fallback_count": llm_fallback_count,
+            "invalid_decision_schema_count": invalid_decision_schema_count,
+        },
+        "decisions": decisions,
+    }
+
+
+def flatten_decision_quality_metrics(evaluation: dict) -> dict:
+    return dict(evaluation["metrics"])
