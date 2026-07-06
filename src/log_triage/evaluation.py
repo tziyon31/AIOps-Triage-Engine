@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from math import ceil
 from typing import Any
 
 from sklearn.metrics import classification_report, confusion_matrix  # type: ignore[import-not-found]
@@ -203,4 +204,82 @@ def build_decision_quality_evaluation(
 
 
 def flatten_decision_quality_metrics(evaluation: dict) -> dict:
+    return dict(evaluation["metrics"])
+
+
+def nearest_rank_percentile(values: list[float], q: float) -> float:
+    if not values:
+        return 0.0
+
+    sorted_values = sorted(values)
+    index = ceil(q * len(sorted_values)) - 1
+    index = max(0, min(index, len(sorted_values) - 1))
+
+    return sorted_values[index]
+
+
+def build_offline_latency_evaluation(decision_records: list[dict]) -> dict:
+    latencies = [
+        float(record["latency_ms"])
+        for record in decision_records
+        if "latency_ms" in record
+    ]
+
+    samples = []
+
+    for record in decision_records:
+        policy_result = record["policy_result"]
+        modified_decision = policy_result["modified_decision"]
+
+        samples.append(
+            {
+                "input_text": modified_decision.get("input_text"),
+                "latency_ms": float(record.get("latency_ms", 0.0)),
+                "predicted_action": modified_decision["predicted_action"],
+                "confidence": modified_decision["confidence"],
+                "requires_approval": modified_decision["requires_approval"],
+                "policy_allowed": policy_result["allowed"],
+            }
+        )
+
+    samples_slowest_first = sorted(
+        samples,
+        key=lambda item: item["latency_ms"],
+        reverse=True,
+    )
+
+    return {
+        "scope": "offline_artifact_smoke",
+        "includes": [
+            "model_predict_proba",
+            "decision_object_creation",
+            "policy_validation",
+        ],
+        "excludes": [
+            "api_server",
+            "network",
+            "concurrency",
+            "cold_start",
+            "queueing",
+            "external_llm_call",
+        ],
+        "metrics": {
+            "offline_latency_sample_count": len(latencies),
+            "offline_decision_latency_p50_ms": round(
+                nearest_rank_percentile(latencies, 0.50),
+                4,
+            ),
+            "offline_decision_latency_p95_ms": round(
+                nearest_rank_percentile(latencies, 0.95),
+                4,
+            ),
+            "offline_decision_latency_max_ms": round(max(latencies), 4)
+            if latencies
+            else 0.0,
+        },
+        "samples_slowest_first": samples_slowest_first,
+    }
+
+
+def flatten_offline_latency_metrics(evaluation: dict) -> dict:
     return dict(evaluation["metrics"])
