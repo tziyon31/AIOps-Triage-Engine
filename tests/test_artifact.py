@@ -30,6 +30,7 @@ def test_latest_artifact_dir_has_required_files():
     assert (artifact_dir / "evaluation" / "confusion_matrix.json").exists()
     assert (artifact_dir / "evaluation" / "confusion_matrix.md").exists()
     assert (artifact_dir / "evaluation" / "confusion_matrix.txt").exists()
+    assert (artifact_dir / "evaluation" / "decision_quality.json").exists()
 
 
 def test_model_pkl_contains_only_model():
@@ -91,6 +92,7 @@ def test_manifest_holds_metadata_not_model_objects():
         "confusion_matrix",
         "confusion_matrix_markdown",
         "confusion_matrix_text",
+        "decision_quality",
     }
     assert set(manifest["hashes"].keys()) == {
         "model_sha256",
