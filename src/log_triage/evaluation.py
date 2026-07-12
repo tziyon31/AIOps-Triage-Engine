@@ -141,7 +141,6 @@ def build_decision_quality_evaluation(
     invalid_decision_schema_count = 0
 
     for record in decision_records:
-        decision = record["decision"]
         policy_result = record["policy_result"]
         modified_decision = policy_result["modified_decision"]
 
@@ -185,6 +184,22 @@ def build_decision_quality_evaluation(
         else 0.0
     )
 
+    decisions_below_min_confidence = [
+        decision
+        for decision in decisions
+        if decision["confidence"] < min_confidence
+    ]
+    decisions_requiring_approval = [
+        decision for decision in decisions if decision["requires_approval"]
+    ]
+    policy_blocked_decisions = [
+        decision for decision in decisions if not decision["policy_allowed"]
+    ]
+    decisions_by_confidence_ascending = sorted(
+        decisions,
+        key=lambda item: item["confidence"],
+    )
+
     return {
         "thresholds": {
             "min_confidence": min_confidence,
@@ -199,7 +214,10 @@ def build_decision_quality_evaluation(
             "llm_fallback_count": llm_fallback_count,
             "invalid_decision_schema_count": invalid_decision_schema_count,
         },
-        "decisions": decisions,
+        "decisions_below_min_confidence": decisions_below_min_confidence,
+        "decisions_requiring_approval": decisions_requiring_approval,
+        "policy_blocked_decisions": policy_blocked_decisions,
+        "decisions_by_confidence_ascending": decisions_by_confidence_ascending,
     }
 
 
