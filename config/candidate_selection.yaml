@@ -1,0 +1,28 @@
+policy_name: decision_engine_candidate_selection
+policy_version: v1
+scope: offline_decision_engine_candidate_selection
+status: learning_policy_not_production_gate
+
+baseline:
+  required: true
+  minimum_f1_improvement_over_baseline: 0.02
+
+thresholds:
+  minimum_f1_macro: 0.80
+  minimum_weakest_class_recall: 0.70
+  maximum_low_confidence_rate: 0.20
+  maximum_approval_required_rate: 0.50
+  maximum_offline_decision_latency_p95_ms: 200.0
+
+tie_breakers:
+  - highest_f1_macro
+  - lowest_offline_decision_latency_p95_ms
+  - lowest_low_confidence_rate
+  - lowest_approval_required_rate
+  - earliest_start_time
+  - run_id
+
+decisions:
+  pass: candidate_ready
+  fail: candidate_rejected
+  review: human_review_required
