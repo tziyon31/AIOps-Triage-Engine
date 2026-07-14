@@ -95,6 +95,24 @@ def normalize_run(row: pd.Series) -> dict[str, Any]:
             "comparison_group_id",
             get_run_value(row, "tags", "fair_comparison_group_id", "unknown"),
         ),
+        "experiment_name": get_run_value(
+            row,
+            "tags",
+            "experiment_name",
+            "unknown",
+        ),
+        "experiment_config_path": get_run_value(
+            row,
+            "tags",
+            "experiment_config_path",
+            "unknown",
+        ),
+        "experiment_config_sha256": get_run_value(
+            row,
+            "tags",
+            "experiment_config_sha256",
+            "unknown",
+        ),
         "split_sha256": get_run_value(row, "tags", "split_sha256", "unknown"),
         "train_split_sha256": get_run_value(
             row,
