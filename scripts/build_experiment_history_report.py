@@ -27,6 +27,10 @@ from scripts.compare_runs import (
 
 DEFAULT_OUTPUT_DIR = "evidence/experiment_history"
 
+MEANINGFUL_F1_DELTA = 0.02
+LOW_CONFIDENCE_RATE_THRESHOLD = 0.20
+WEAKEST_CLASS_RECALL_THRESHOLD = 0.70
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -131,6 +135,171 @@ def build_blocked_reason(
     return "; ".join(reasons)
 
 
+def read_metric(run: dict[str, Any], metric_name: str) -> float | None:
+    value = run.get("metrics", {}).get(metric_name)
+
+    if value is None:
+        return None
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def metric_spread(
+    runs: list[dict[str, Any]],
+    metric_name: str,
+) -> float | None:
+    values = [
+        value
+        for run in runs
+        if (value := read_metric(run, metric_name)) is not None
+    ]
+
+    if len(values) < 2:
+        return None
+
+    return max(values) - min(values)
+
+
+def build_next_experiment_recommendation(
+    *,
+    comparison_contract: dict[str, Any],
+    controlled_variable_validation: dict[str, Any],
+    runs: list[dict[str, Any]],
+    best_runs: dict[str, Any],
+    blocked_reason: str | None,
+) -> dict[str, Any]:
+    if comparison_contract["status"] != "valid":
+        return {
+            "recommendation_type": "rerun_invalid_comparison",
+            "recommended_next_experiment": "rerun_same_experiment_after_fixing_contract",
+            "reason": blocked_reason or "comparison contract is invalid",
+            "evidence": [
+                f"comparison_status={comparison_contract['status']}",
+                (
+                    "controlled_variable_status="
+                    f"{controlled_variable_validation['status']}"
+                ),
+            ],
+        }
+
+    best_f1_run = best_runs.get("best_f1_macro")
+    best_latency_run = best_runs.get("best_latency_p95")
+    best_low_confidence_run = best_runs.get("best_low_confidence_rate")
+
+    if best_f1_run:
+        weakest_class_recall = read_metric(
+            best_f1_run,
+            "combined_weakest_class_recall",
+        )
+
+        if (
+            weakest_class_recall is not None
+            and weakest_class_recall < WEAKEST_CLASS_RECALL_THRESHOLD
+        ):
+            return {
+                "recommendation_type": "data_or_feature_pipeline_experiment",
+                "recommended_next_experiment": (
+                    "weakest_class_data_or_feature_pipeline"
+                ),
+                "reason": (
+                    "The best f1 variant still has weak recall on at least one "
+                    "class, so another model-family comparison is unlikely to be "
+                    "the highest-leverage next step."
+                ),
+                "evidence": [
+                    f"best_variant={best_f1_run['tags']['variant_name']}",
+                    f"combined_weakest_class_recall={weakest_class_recall}",
+                ],
+            }
+
+        low_confidence_rate = read_metric(
+            best_f1_run,
+            "low_confidence_rate",
+        )
+
+        if (
+            low_confidence_rate is not None
+            and low_confidence_rate > LOW_CONFIDENCE_RATE_THRESHOLD
+        ):
+            return {
+                "recommendation_type": "confidence_or_feature_experiment",
+                "recommended_next_experiment": (
+                    "confidence_threshold_or_feature_pipeline"
+                ),
+                "reason": (
+                    "The best f1 variant still produces too many low-confidence "
+                    "decisions. The next experiment should target confidence, "
+                    "features, or threshold behavior."
+                ),
+                "evidence": [
+                    f"best_variant={best_f1_run['tags']['variant_name']}",
+                    f"low_confidence_rate={low_confidence_rate}",
+                ],
+            }
+
+    f1_spread = metric_spread(runs, "f1_macro")
+
+    if f1_spread is not None and f1_spread < MEANINGFUL_F1_DELTA:
+        return {
+            "recommendation_type": "change_experiment_direction",
+            "recommended_next_experiment": "feature_pipeline_experiment",
+            "reason": (
+                "The compared variants are too close on f1_macro. Continuing "
+                "to test similar variants is unlikely to produce a meaningful "
+                "quality gain."
+            ),
+            "evidence": [
+                f"f1_macro_spread={round(f1_spread, 4)}",
+                f"meaningful_delta_threshold={MEANINGFUL_F1_DELTA}",
+            ],
+        }
+
+    if (
+        best_f1_run
+        and best_latency_run
+        and best_f1_run["run_id"] != best_latency_run["run_id"]
+    ):
+        return {
+            "recommendation_type": "quality_latency_tradeoff_experiment",
+            "recommended_next_experiment": "latency_or_cost_tradeoff_experiment",
+            "reason": (
+                "The best quality variant is not the fastest variant. The next "
+                "experiment should clarify whether the quality gain is worth "
+                "the latency/cost tradeoff."
+            ),
+            "evidence": [
+                f"best_f1_variant={best_f1_run['tags']['variant_name']}",
+                f"best_latency_variant={best_latency_run['tags']['variant_name']}",
+            ],
+        }
+
+    if best_f1_run:
+        return {
+            "recommendation_type": "candidate_selection",
+            "recommended_next_experiment": "candidate_selection_policy",
+            "reason": (
+                "The comparison is valid and no blocking quality/confidence "
+                "issue was detected. The next step is candidate selection, "
+                "not another experiment."
+            ),
+            "evidence": [
+                f"best_f1_variant={best_f1_run['tags']['variant_name']}",
+                f"comparison_type={comparison_contract['comparison_type']}",
+                f"changed_variable={comparison_contract['changed_variable']}",
+            ],
+        }
+
+    return {
+        "recommendation_type": "insufficient_metrics",
+        "recommended_next_experiment": "rerun_with_required_metrics",
+        "reason": "No usable metric winner was found.",
+        "evidence": ["missing best_f1_macro"],
+    }
+
+
 def summarize_comparison_group(
     *,
     comparison_group_id: str,
@@ -145,6 +314,19 @@ def summarize_comparison_group(
     )
 
     best_runs = select_best_runs(complete_runs)
+
+    blocked_reason = build_blocked_reason(
+        comparison_contract=comparison_contract,
+        controlled_variable_validation=controlled_variable_validation,
+    )
+
+    next_experiment_recommendation = build_next_experiment_recommendation(
+        comparison_contract=comparison_contract,
+        controlled_variable_validation=controlled_variable_validation,
+        runs=complete_runs,
+        best_runs=best_runs,
+        blocked_reason=blocked_reason,
+    )
 
     return {
         "comparison_group_id": comparison_group_id,
@@ -180,10 +362,75 @@ def summarize_comparison_group(
         "controlled_variable_validation": controlled_variable_validation,
         "best_runs": summarize_best_runs(best_runs),
         "tradeoff_summary": build_tradeoff_summary(best_runs),
-        "blocked_reason": build_blocked_reason(
-            comparison_contract=comparison_contract,
-            controlled_variable_validation=controlled_variable_validation,
-        ),
+        "blocked_reason": blocked_reason,
+        "next_experiment_recommendation": next_experiment_recommendation,
+    }
+
+
+def build_overall_next_step(
+    groups: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if not groups:
+        return {
+            "recommendation_type": "no_experiments_found",
+            "recommended_next_experiment": "run_first_config_driven_comparison",
+            "reason": "No MLflow comparison groups were found.",
+            "evidence": [],
+            "source_group_id": None,
+        }
+
+    invalid_groups = [
+        group
+        for group in groups
+        if group["status"] != "valid"
+    ]
+
+    if invalid_groups:
+        group = invalid_groups[0]
+        recommendation = group["next_experiment_recommendation"]
+
+        return {
+            **recommendation,
+            "source_group_id": group["comparison_group_id"],
+        }
+
+    non_candidate_recommendations = [
+        group
+        for group in groups
+        if group["next_experiment_recommendation"]["recommendation_type"]
+        != "candidate_selection"
+    ]
+
+    if non_candidate_recommendations:
+        group = non_candidate_recommendations[0]
+        recommendation = group["next_experiment_recommendation"]
+
+        return {
+            **recommendation,
+            "source_group_id": group["comparison_group_id"],
+        }
+
+    ready_groups = [
+        group
+        for group in groups
+        if group["ready_for_candidate_selection"]
+    ]
+
+    if ready_groups:
+        group = ready_groups[0]
+        recommendation = group["next_experiment_recommendation"]
+
+        return {
+            **recommendation,
+            "source_group_id": group["comparison_group_id"],
+        }
+
+    return {
+        "recommendation_type": "no_ready_groups",
+        "recommended_next_experiment": "rerun_comparison_with_complete_metadata",
+        "reason": "No valid or ready comparison group was found.",
+        "evidence": [],
+        "source_group_id": None,
     }
 
 
@@ -226,6 +473,7 @@ def build_experiment_history_report(
         "valid_comparison_groups": len(valid_groups),
         "invalid_comparison_groups": len(invalid_groups),
         "ready_for_candidate_selection_groups": len(ready_groups),
+        "overall_next_step": build_overall_next_step(groups),
         "comparison_groups": groups,
     }
 
@@ -241,23 +489,43 @@ def build_markdown_report(report: dict[str, Any]) -> str:
         "- Ready for candidate selection groups: "
         f"`{report['ready_for_candidate_selection_groups']}`",
         "",
-        "## Comparison Groups",
+        "## Recommended Next Step",
         "",
-        "| Group | Status | Ready | Changed variable | Variants | Blocked reason |",
-        "|---|---|---|---|---|---|",
+        f"- Type: `{report['overall_next_step']['recommendation_type']}`",
+        "- Recommended next experiment: "
+        f"`{report['overall_next_step']['recommended_next_experiment']}`",
+        f"- Source group: `{report['overall_next_step']['source_group_id']}`",
+        f"- Reason: {report['overall_next_step']['reason']}",
+        "",
+        "Evidence:",
     ]
+
+    for item in report["overall_next_step"].get("evidence", []):
+        lines.append(f"- `{item}`")
+
+    lines.extend(
+        [
+            "",
+            "## Comparison Groups",
+            "",
+            "| Group | Status | Ready | Changed variable | Variants | Recommendation | Blocked reason |",
+            "|---|---|---|---|---|---|---|",
+        ]
+    )
 
     for group in report["comparison_groups"]:
         variants = ", ".join(group["variants"])
         blocked_reason = group["blocked_reason"] or ""
+        recommendation = group["next_experiment_recommendation"]
 
         lines.append(
-            "| {group_id} | {status} | {ready} | {changed_variable} | {variants} | {blocked_reason} |".format(
+            "| {group_id} | {status} | {ready} | {changed_variable} | {variants} | {recommendation} | {blocked_reason} |".format(
                 group_id=group["comparison_group_id"],
                 status=group["status"],
                 ready=str(group["ready_for_candidate_selection"]).lower(),
                 changed_variable=group["changed_variable"],
                 variants=variants,
+                recommendation=recommendation["recommended_next_experiment"],
                 blocked_reason=blocked_reason,
             )
         )
@@ -296,7 +564,19 @@ def build_markdown_report(report: dict[str, Any]) -> str:
             for item in group["tradeoff_summary"]:
                 lines.append(f"- {item}")
 
-            lines.append("")
+            recommendation = group["next_experiment_recommendation"]
+
+            lines.extend(
+                [
+                    "",
+                    "Recommendation:",
+                    f"- Type: `{recommendation['recommendation_type']}`",
+                    "- Recommended next experiment: "
+                    f"`{recommendation['recommended_next_experiment']}`",
+                    f"- Reason: {recommendation['reason']}",
+                    "",
+                ]
+            )
 
     lines.extend(
         [
