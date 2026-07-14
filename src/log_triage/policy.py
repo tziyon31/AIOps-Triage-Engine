@@ -69,7 +69,7 @@ def validate(
         result = PolicyResult(
             allowed=False,
             reason=f"Action '{action}' is forbidden by policy.",
-            modified_decision=modified_decision,
+            modified_decision=DecisionObject.model_validate(modified_decision),
         )
         return result.model_dump()
 
@@ -90,13 +90,13 @@ def validate(
         result = PolicyResult(
             allowed=True,
             reason=" ".join(approval_reasons),
-            modified_decision=modified_decision,
+            modified_decision=DecisionObject.model_validate(modified_decision),
         )
         return result.model_dump()
 
     result = PolicyResult(
         allowed=True,
         reason="Decision allowed by policy.",
-        modified_decision=modified_decision,
+        modified_decision=DecisionObject.model_validate(modified_decision),
     )
     return result.model_dump()
