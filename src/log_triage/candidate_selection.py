@@ -79,6 +79,7 @@ def load_candidate_selection_policy(
                 f"Candidate selection policy missing decisions.{decision_key}"
             )
 
+    raw_config["policy_path"] = str(policy_path)
     return raw_config
 
 
@@ -208,6 +209,13 @@ def compare_to_baseline(
             "required_improvement": required_improvement,
             "actual_improvement": None,
             "minimum_required_f1_macro": None,
+            "checks": [
+                {
+                    "check_name": "f1_improvement_over_baseline",
+                    "status": "missing",
+                    "required_improvement": required_improvement,
+                }
+            ],
         }
 
     minimum_required_f1 = baseline_f1 + required_improvement
@@ -231,4 +239,15 @@ def compare_to_baseline(
         "required_improvement": required_improvement,
         "actual_improvement": actual_improvement,
         "minimum_required_f1_macro": minimum_required_f1,
+        "checks": [
+            {
+                "check_name": "f1_improvement_over_baseline",
+                "status": "passed" if passed else "failed",
+                "candidate_f1_macro": candidate_f1,
+                "baseline_f1_macro": baseline_f1,
+                "required_improvement": required_improvement,
+                "actual_improvement": actual_improvement,
+                "minimum_required_f1_macro": minimum_required_f1,
+            }
+        ],
     }
