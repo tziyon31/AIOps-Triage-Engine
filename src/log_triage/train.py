@@ -70,6 +70,7 @@ from src.log_triage.experiments import (
     experiment_config_to_dict,
     feature_pipeline_identity_to_dict,
     load_experiment_config,
+    validate_experiment_config,
     variant_to_dict,
 )
 from src.log_triage.features import MANUAL_FEATURE_NAMES
@@ -1147,6 +1148,16 @@ def train_evaluate_and_log_variant(
 
 def main():
     experiment_config = load_experiment_config_for_run()
+
+    validation_errors = validate_experiment_config(
+        experiment_config=experiment_config,
+        training_config=TRAINING_CONFIG,
+    )
+
+    if validation_errors:
+        message = "\n".join(f"- {error}" for error in validation_errors)
+        raise ValueError(f"Invalid experiment config:\n{message}")
+
     experiment_config_payload = experiment_config_to_dict(experiment_config)
     comparison_group_id = build_comparison_group_id(experiment_config)
 

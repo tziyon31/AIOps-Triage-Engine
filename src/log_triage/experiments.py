@@ -254,3 +254,90 @@ def experiment_config_to_dict(config: ExperimentConfig) -> dict[str, Any]:
         "experiment_config_path": config.experiment_config_path,
         "experiment_config_sha256": config.experiment_config_sha256,
     }
+
+
+def normalize_ngram_range(value: Any) -> Any:
+    if isinstance(value, tuple):
+        return list(value)
+
+    return value
+
+
+def validate_experiment_config(
+    *,
+    experiment_config: ExperimentConfig,
+    training_config: dict[str, Any],
+) -> list[str]:
+    errors: list[str] = []
+
+    changed_variable = experiment_config.changed_variable
+    feature_pipeline = experiment_config.feature_pipeline
+    vectorizer_params = dict(feature_pipeline.get("vectorizer_params", {}))
+    tfidf_cfg = training_config.get("tfidf", {})
+
+    if (
+        feature_pipeline.get("vectorizer_name") == "TfidfVectorizer"
+        and changed_variable not in {
+            "feature_pipeline",
+            "vectorizer",
+            "vectorizer_name",
+            "vectorizer_params",
+            "tfidf_max_features",
+            "tfidf_ngram_range",
+        }
+    ):
+        expected_max_features = tfidf_cfg.get("max_features")
+        actual_max_features = vectorizer_params.get("max_features")
+
+        if actual_max_features != expected_max_features:
+            errors.append(
+                "Experiment config feature_pipeline.vectorizer_params.max_features "
+                f"({actual_max_features}) does not match training.yaml "
+                f"tfidf.max_features ({expected_max_features})."
+            )
+
+        expected_ngram_range = normalize_ngram_range(
+            tfidf_cfg.get("ngram_range")
+        )
+        actual_ngram_range = normalize_ngram_range(
+            vectorizer_params.get("ngram_range")
+        )
+
+        if actual_ngram_range != expected_ngram_range:
+            errors.append(
+                "Experiment config feature_pipeline.vectorizer_params.ngram_range "
+                f"({actual_ngram_range}) does not match training.yaml "
+                f"tfidf.ngram_range ({expected_ngram_range})."
+            )
+
+    expected_random_seed = training_config.get("random_seed")
+
+    for variant in experiment_config.variants:
+        variant_random_state = variant.model_params.get("random_state")
+
+        if (
+            changed_variable not in {"random_state", "seed"}
+            and variant_random_state != expected_random_seed
+        ):
+            errors.append(
+                f"Variant {variant.variant_name} model_params.random_state "
+                f"({variant_random_state}) does not match training.yaml "
+                f"random_seed ({expected_random_seed})."
+            )
+
+    expected_model_max_iter = training_config.get("model", {}).get("max_iter")
+
+    for variant in experiment_config.variants:
+        variant_max_iter = variant.model_params.get("model_max_iter")
+
+        if (
+            changed_variable not in {"model_max_iter", "max_iter"}
+            and variant_max_iter != expected_model_max_iter
+        ):
+            errors.append(
+                f"Variant {variant.variant_name} model_params.model_max_iter "
+                f"({variant_max_iter}) does not match training.yaml "
+                f"model.max_iter ({expected_model_max_iter})."
+            )
+
+    return errors
