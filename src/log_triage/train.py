@@ -16,7 +16,10 @@ import joblib  # type: ignore[import-not-found]
 from scipy.sparse import csr_matrix, hstack  # type: ignore[import-not-found]
 from sklearn.exceptions import ConvergenceWarning  # type: ignore[import-not-found]
 from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore[import-not-found]
-from sklearn.linear_model import LogisticRegression  # type: ignore[import-not-found]
+from sklearn.linear_model import (  # type: ignore[import-not-found]
+    LogisticRegression,
+    SGDClassifier,
+)
 from sklearn.metrics import (  # type: ignore[import-not-found]
     accuracy_score,
     classification_report,
@@ -58,6 +61,17 @@ from src.log_triage.evaluation import (
     flatten_offline_latency_metrics,
     flatten_per_class_metrics,
 )
+from src.log_triage.experiments import (
+    ExperimentConfig,
+    VariantDefinition,
+    build_evaluation_code_identity,
+    build_feature_pipeline_identity,
+    evaluation_code_identity_to_dict,
+    experiment_config_to_dict,
+    feature_pipeline_identity_to_dict,
+    load_experiment_config,
+    variant_to_dict,
+)
 from src.log_triage.features import MANUAL_FEATURE_NAMES
 from src.log_triage.pipeline import (
     FEATURE_NAMES,
@@ -73,6 +87,7 @@ TRAINING_CONFIG = load_training_config()
 TEST_SIZE = TRAINING_CONFIG["test_size"]
 RANDOM_STATE = TRAINING_CONFIG["random_seed"]
 MODEL_MAX_ITER = TRAINING_CONFIG["model"]["max_iter"]
+DEFAULT_EXPERIMENT_CONFIG_PATH = "config/experiments/model_family.yaml"
 
 ACTION_DISPLAY_NAME = {
     "open_ticket": "open_ticket",
@@ -113,6 +128,98 @@ def build_training_config() -> dict:
     }
 
 
+def load_experiment_config_for_run() -> ExperimentConfig:
+    config_path = os.getenv(
+        "LOG_TRIAGE_EXPERIMENT_CONFIG",
+        DEFAULT_EXPERIMENT_CONFIG_PATH,
+    )
+
+    return load_experiment_config(config_path)
+
+
+def select_variants_for_run(
+    experiment_config: ExperimentConfig,
+) -> list[VariantDefinition]:
+    variants = experiment_config.variants
+
+    if os.getenv("LOG_TRIAGE_COMPARE_VARIANTS") == "1":
+        return variants
+
+    requested_variant = os.getenv(
+        "LOG_TRIAGE_VARIANT",
+        variants[0].variant_name,
+    )
+
+    selected = [
+        variant
+        for variant in variants
+        if variant.variant_name == requested_variant
+    ]
+
+    if not selected:
+        valid_names = ", ".join(variant.variant_name for variant in variants)
+        raise ValueError(
+            f"Unknown LOG_TRIAGE_VARIANT={requested_variant}. "
+            f"Valid variants from {experiment_config.experiment_config_path}: "
+            f"{valid_names}"
+        )
+
+    return selected
+
+
+def build_vectorizer_kwargs_from_experiment_config(
+    experiment_config: ExperimentConfig,
+) -> dict:
+    feature_pipeline_cfg = experiment_config.feature_pipeline
+    vectorizer_params = dict(feature_pipeline_cfg.get("vectorizer_params", {}))
+
+    if isinstance(vectorizer_params.get("ngram_range"), list):
+        vectorizer_params["ngram_range"] = tuple(
+            vectorizer_params["ngram_range"]
+        )
+
+    return {
+        key: value
+        for key, value in vectorizer_params.items()
+        if value is not None
+    }
+
+
+def build_comparison_group_id(
+    experiment_config: ExperimentConfig,
+) -> str:
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    short_config_sha = experiment_config.experiment_config_sha256[:8]
+    short_random = uuid4().hex[:8]
+
+    return (
+        f"{experiment_config.experiment_name}-"
+        f"{short_config_sha}-"
+        f"{timestamp}-"
+        f"{short_random}"
+    )
+
+
+def build_model_for_variant(variant: VariantDefinition):
+    params = variant.model_params
+
+    if variant.model_family == "LogisticRegression":
+        return LogisticRegression(
+            max_iter=int(params["model_max_iter"]),
+            random_state=int(params["random_state"]),
+        )
+
+    if variant.model_family == "SGDClassifier":
+        return SGDClassifier(
+            loss=str(params["loss"]),
+            max_iter=int(params["model_max_iter"]),
+            random_state=int(params["random_state"]),
+            tol=float(params["tol"]),
+        )
+
+    raise ValueError(f"Unsupported model_family={variant.model_family}")
+
+
 def build_decision_artifact(
     model,
     vectorizer,
@@ -123,7 +230,46 @@ def build_decision_artifact(
     metrics: dict,
     training_warnings: dict | None = None,
     evaluation: dict | None = None,
+    variant: dict | None = None,
+    feature_pipeline: dict | None = None,
+    evaluation_code: dict | None = None,
+    experiment_config: dict | None = None,
 ) -> dict:
+    variant_info = variant or {
+        "variant_name": "manual_tfidf_logistic_regression",
+        "variant_type": "model_family",
+        "comparison_type": "model_family",
+        "changed_variable": "model_family",
+        "controlled_variables": [
+            "raw_data",
+            "train_split",
+            "test_split",
+            "feature_pipeline",
+            "policy",
+            "evaluation_code",
+        ],
+        "model_family": TRAINING_CONFIG["model"]["type"],
+        "model_params": {},
+    }
+
+    feature_pipeline_info = feature_pipeline or {
+        "feature_pipeline_name": "manual_features_plus_tfidf",
+        "vectorizer_name": "TfidfVectorizer",
+        "vectorizer_params": {},
+        "feature_pipeline_sha256": "unknown",
+    }
+
+    evaluation_code_info = evaluation_code or {
+        "evaluation_code_sha256": "unknown",
+        "source_files": [],
+    }
+
+    experiment_config_info = experiment_config or {
+        "experiment_name": "unknown",
+        "experiment_config_path": "unknown",
+        "experiment_config_sha256": "unknown",
+    }
+
     return {
         "run_id": str(uuid4()),
         "model": model,
@@ -133,8 +279,14 @@ def build_decision_artifact(
         "schema_version": SCHEMA_VERSION,
         "artifact_type": ARTIFACT_TYPE,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "model_type": TRAINING_CONFIG["model"]["type"],
-        "text_representation": "manual_features_plus_tfidf",
+        "model_type": variant_info.get(
+            "model_family",
+            TRAINING_CONFIG["model"]["type"],
+        ),
+        "text_representation": feature_pipeline_info.get(
+            "feature_pipeline_name",
+            "manual_features_plus_tfidf",
+        ),
         "decision_contract": build_decision_contract(),
         "metrics": {
             # `accuracy` is the primary quality metric for the saved artifact.
@@ -145,6 +297,10 @@ def build_decision_artifact(
         "training_config": build_training_config(),
         "training_warnings": training_warnings or {},
         "evaluation": evaluation or {},
+        "variant": variant_info,
+        "feature_pipeline": feature_pipeline_info,
+        "evaluation_code": evaluation_code_info,
+        "experiment_config": experiment_config_info,
     }
 
 
@@ -194,7 +350,7 @@ def is_mlflow_enabled() -> bool:
     )
 
 
-def mlflow_run_context():
+def mlflow_run_context(run_name: str = "train-decision-engine"):
     if not is_mlflow_enabled():
         return nullcontext(None)
 
@@ -206,13 +362,17 @@ def mlflow_run_context():
     )
 
     mlflow.set_experiment(experiment_name)
-    return mlflow.start_run(run_name="train-decision-engine")
+    return mlflow.start_run(run_name=run_name)
 
 
-def build_mlflow_params() -> dict:
+def build_mlflow_params(
+    *,
+    variant: dict | None = None,
+    feature_pipeline: dict | None = None,
+) -> dict:
     tfidf_cfg = TRAINING_CONFIG.get("tfidf", {})
 
-    return {
+    params = {
         "model_type": TRAINING_CONFIG["model"]["type"],
         "model_max_iter": MODEL_MAX_ITER,
         "random_seed": RANDOM_STATE,
@@ -222,6 +382,23 @@ def build_mlflow_params() -> dict:
         "schema_version": SCHEMA_VERSION,
         "artifact_type": ARTIFACT_TYPE,
     }
+
+    if variant:
+        for key, value in variant.get("model_params", {}).items():
+            if value is not None:
+                params[f"variant_{key}"] = value
+
+    if feature_pipeline:
+        params["feature_pipeline_name"] = feature_pipeline.get(
+            "feature_pipeline_name"
+        )
+        params["vectorizer_name"] = feature_pipeline.get("vectorizer_name")
+
+        for key, value in feature_pipeline.get("vectorizer_params", {}).items():
+            if value is not None:
+                params[f"vectorizer_{key}"] = str(value)
+
+    return params
 
 
 def compute_artifact_sha256_from_manifest(manifest: dict) -> str:
@@ -260,7 +437,15 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
 
     hashes = manifest["hashes"]
 
-    for key, value in build_mlflow_params().items():
+    variant = artifact.get("variant", {})
+    feature_pipeline = artifact.get("feature_pipeline", {})
+    evaluation_code = artifact.get("evaluation_code", {})
+    experiment_config = artifact.get("experiment_config", {})
+
+    for key, value in build_mlflow_params(
+        variant=variant,
+        feature_pipeline=feature_pipeline,
+    ).items():
         if value is not None:
             mlflow.log_param(key, value)
 
@@ -292,6 +477,87 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
             "quality_gate_status": "not_checked_in_train",
         }
     )
+
+    if variant:
+        mlflow.set_tags(
+            {
+                "variant_name": variant.get("variant_name", "unknown"),
+                "variant_type": variant.get("variant_type", "unknown"),
+                "comparison_type": variant.get("comparison_type", "unknown"),
+                "changed_variable": variant.get("changed_variable", "unknown"),
+                "controlled_variables": ",".join(
+                    variant.get("controlled_variables", [])
+                ),
+                "model_family": variant.get("model_family", "unknown"),
+            }
+        )
+
+    if feature_pipeline:
+        mlflow.set_tags(
+            {
+                "feature_pipeline_name": feature_pipeline.get(
+                    "feature_pipeline_name",
+                    "unknown",
+                ),
+                "vectorizer_name": feature_pipeline.get(
+                    "vectorizer_name",
+                    "unknown",
+                ),
+                "feature_pipeline_sha256": feature_pipeline.get(
+                    "feature_pipeline_sha256",
+                    "unknown",
+                ),
+            }
+        )
+
+    if evaluation_code:
+        mlflow.set_tags(
+            {
+                "evaluation_code_sha256": evaluation_code.get(
+                    "evaluation_code_sha256",
+                    "unknown",
+                ),
+                "evaluation_code_files": ",".join(
+                    file_info["path"]
+                    for file_info in evaluation_code.get("source_files", [])
+                ),
+            }
+        )
+
+    if experiment_config:
+        mlflow.set_tags(
+            {
+                "experiment_name": experiment_config.get(
+                    "experiment_name",
+                    "unknown",
+                ),
+                "experiment_config_path": experiment_config.get(
+                    "experiment_config_path",
+                    "unknown",
+                ),
+                "experiment_config_sha256": experiment_config.get(
+                    "experiment_config_sha256",
+                    "unknown",
+                ),
+            }
+        )
+
+    split_evidence = artifact.get("evaluation", {}).get("split", {})
+
+    if split_evidence:
+        comparison_group_id = split_evidence.get(
+            "comparison_group_id",
+            split_evidence["split_sha256"],
+        )
+        mlflow.set_tags(
+            {
+                "train_split_sha256": split_evidence["train_split_sha256"],
+                "test_split_sha256": split_evidence["test_split_sha256"],
+                "split_sha256": split_evidence["split_sha256"],
+                "comparison_group_id": comparison_group_id,
+                "fair_comparison_group_id": comparison_group_id,
+            }
+        )
 
     training_warning_count = int(
         artifact["metrics"].get("training_warning_count", 0)
@@ -379,6 +645,7 @@ def build_manifest(
             "confusion_matrix_text": "evaluation/confusion_matrix.txt",
             "decision_quality": "evaluation/decision_quality.json",
             "offline_latency": "evaluation/offline_latency.json",
+            "split_evidence": "evaluation/split_evidence.json",
         },
         "hashes": build_artifact_file_hashes(
             model_path=model_path,
@@ -393,6 +660,10 @@ def build_manifest(
         },
         "decision_contract": artifact["decision_contract"],
         "metrics": artifact["metrics"],
+        "variant": artifact.get("variant", {}),
+        "feature_pipeline": artifact.get("feature_pipeline", {}),
+        "evaluation_code": artifact.get("evaluation_code", {}),
+        "experiment_config": artifact.get("experiment_config", {}),
     }
 
     if version is not None:
@@ -417,6 +688,7 @@ def save_decision_artifact(artifact: dict) -> Path:
     confusion_matrix_text_path = evaluation_dir / "confusion_matrix.txt"
     decision_quality_path = evaluation_dir / "decision_quality.json"
     offline_latency_path = evaluation_dir / "offline_latency.json"
+    split_evidence_path = evaluation_dir / "split_evidence.json"
 
     joblib.dump(artifact["model"], model_path)
     joblib.dump(artifact["vectorizer"], vectorizer_path)
@@ -456,6 +728,13 @@ def save_decision_artifact(artifact: dict) -> Path:
     with open(offline_latency_path, "w", encoding="utf-8") as file:
         json.dump(
             artifact.get("evaluation", {}).get("offline_latency", {}),
+            file,
+            indent=2,
+        )
+
+    with open(split_evidence_path, "w", encoding="utf-8") as file:
+        json.dump(
+            artifact.get("evaluation", {}).get("split", {}),
             file,
             indent=2,
         )
@@ -668,107 +947,90 @@ def count_convergence_warnings(training_warnings: dict) -> int:
     )
 
 
-def main():
-    with mlflow_run_context():
+def stable_rows_sha256(rows: list[dict]) -> str:
+    payload = [
+        {
+            "raw": row["raw"],
+            "message": row["message"],
+            "label": int(row["label"]),
+        }
+        for row in rows
+    ]
+
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def build_split_evidence(
+    *,
+    train_rows: list[dict],
+    test_rows: list[dict],
+    comparison_group_id: str,
+) -> dict:
+    train_split_sha256 = stable_rows_sha256(train_rows)
+    test_split_sha256 = stable_rows_sha256(test_rows)
+
+    split_sha256 = hashlib.sha256(
+        json.dumps(
+            {
+                "train_split_sha256": train_split_sha256,
+                "test_split_sha256": test_split_sha256,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+    return {
+        "train_split_sha256": train_split_sha256,
+        "test_split_sha256": test_split_sha256,
+        "split_sha256": split_sha256,
+        "comparison_group_id": comparison_group_id,
+        "train_size": len(train_rows),
+        "test_size": len(test_rows),
+        "random_state": RANDOM_STATE,
+        "test_size_config": TEST_SIZE,
+    }
+
+
+def train_evaluate_and_log_variant(
+    *,
+    variant: VariantDefinition,
+    feature_pipeline: dict,
+    evaluation_code: dict,
+    experiment_config: dict,
+    vectorizer,
+    X_train_combined,
+    X_test_combined,
+    y_train,
+    y_test,
+    test_rows,
+    split_evidence: dict | None = None,
+) -> Path:
+    with mlflow_run_context(run_name=variant.variant_name):
         training_warnings: dict = {}
-        raw_logs = load_raw_logs()
-        rows, skipped = build_rows(raw_logs)
+        model = build_model_for_variant(variant)
 
-        print("Dataset size:", len(rows))
-        print("Skipped examples:", len(skipped))
-
-        if skipped:
-            print("\nSkipped:")
-            for item in skipped:
-                print(item)
-
-        train_rows, test_rows = split_rows(rows)
-
-        X_train_text, X_train_manual, y_train = unpack_rows(train_rows)
-        X_test_text, X_test_manual, y_test = unpack_rows(test_rows)
-
-        X_train_manual_sparse = csr_matrix(X_train_manual)
-        X_test_manual_sparse = csr_matrix(X_test_manual)
-
-        tfidf_cfg = TRAINING_CONFIG.get("tfidf", {})
-        vectorizer_kwargs = {}
-        if tfidf_cfg.get("max_features") is not None:
-            vectorizer_kwargs["max_features"] = tfidf_cfg["max_features"]
-        if "ngram_range" in tfidf_cfg:
-            vectorizer_kwargs["ngram_range"] = tuple(tfidf_cfg["ngram_range"])
-
-        vectorizer = TfidfVectorizer(**vectorizer_kwargs)
-        X_train_tfidf = cast(csr_matrix, vectorizer.fit_transform(X_train_text))
-        X_test_tfidf = cast(csr_matrix, vectorizer.transform(X_test_text))
-
-        X_train_combined = hstack([X_train_manual_sparse, X_train_tfidf])
-        X_test_combined = hstack([X_test_manual_sparse, X_test_tfidf])
-
-        print("\n--- Feature Shapes ---")
-        print("X_train_manual shape:", X_train_manual_sparse.shape)
-        print("X_train_tfidf shape: ", X_train_tfidf.shape)
-        print("X_train_combined shape:", X_train_combined.shape)
-        print("manual feature count:", len(FEATURE_NAMES))
-        print("tfidf vocabulary size:", len(vectorizer.get_feature_names_out()))
-
-        manual_model = LogisticRegression(
-            max_iter=MODEL_MAX_ITER, random_state=RANDOM_STATE
-        )
         fit_model_with_warning_capture(
-            model_name="manual_features_only",
-            model=manual_model,
-            X_train=X_train_manual,
-            y_train=y_train,
-            warning_registry=training_warnings,
-        )
-
-        tfidf_model = LogisticRegression(max_iter=MODEL_MAX_ITER)
-        fit_model_with_warning_capture(
-            model_name="tfidf_only",
-            model=tfidf_model,
-            X_train=X_train_tfidf,
-            y_train=y_train,
-            warning_registry=training_warnings,
-        )
-
-        combined_model = LogisticRegression(max_iter=MODEL_MAX_ITER)
-        fit_model_with_warning_capture(
-            model_name="manual_features_plus_tfidf",
-            model=combined_model,
+            model_name=variant.variant_name,
+            model=model,
             X_train=X_train_combined,
             y_train=y_train,
             warning_registry=training_warnings,
         )
 
-        manual_accuracy, manual_f1, _, manual_evaluation = evaluate_model(
-            "Manual Features Only",
-            manual_model,
-            X_test_manual,
-            y_test,
-            test_rows,
-        )
-
-        tfidf_accuracy, tfidf_f1, _, tfidf_evaluation = evaluate_model(
-            "TF-IDF Only",
-            tfidf_model,
-            X_test_tfidf,
-            y_test,
-            test_rows,
-        )
-
-        combined_accuracy, combined_f1, _, combined_evaluation = evaluate_model(
-            "Manual Features + TF-IDF",
-            combined_model,
+        accuracy, f1, _, evaluation = evaluate_model(
+            variant.variant_name,
+            model,
             X_test_combined,
             y_test,
             test_rows,
         )
-
-        print("\n--- Summary ---")
-        print("approach | accuracy | f1_macro")
-        print(f"manual   | {manual_accuracy:.3f}    | {manual_f1:.3f}")
-        print(f"tfidf    | {tfidf_accuracy:.3f}    | {tfidf_f1:.3f}")
-        print(f"combined | {combined_accuracy:.3f}    | {combined_f1:.3f}")
 
         print("\n--- Decision Objects ---")
 
@@ -778,13 +1040,12 @@ def main():
             started_at = perf_counter()
 
             decision = build_decision_object(
-                model=combined_model,
+                model=model,
                 X_single=x_single,
                 original_text=row["message"],
             )
 
             policy_result = validate_policy(decision)
-
             latency_ms = (perf_counter() - started_at) * 1000
 
             decision_records.append(
@@ -816,14 +1077,6 @@ def main():
             decision_quality_evaluation
         )
 
-        print("\n--- Training Warnings ---")
-        print("training_warning_count:", training_warning_count)
-        print("convergence_warning_count:", convergence_warning_count)
-
-        print("\n--- Decision Quality Metrics ---")
-        for key, value in decision_quality_metrics.items():
-            print(f"{key}: {value}")
-
         offline_latency_evaluation = build_offline_latency_evaluation(
             decision_records=decision_records,
         )
@@ -832,43 +1085,55 @@ def main():
             offline_latency_evaluation
         )
 
+        per_class_metrics = flatten_per_class_metrics(
+            prefix="combined",
+            evaluation=evaluation,
+        )
+
+        print("\n--- Variant Summary ---")
+        print("variant:", variant.variant_name)
+        print("accuracy:", round(float(accuracy), 4))
+        print("f1_macro:", round(float(f1), 4))
+
+        print("\n--- Decision Quality Metrics ---")
+        for key, value in decision_quality_metrics.items():
+            print(f"{key}: {value}")
+
         print("\n--- Offline Artifact Smoke Latency ---")
         for key, value in offline_latency_metrics.items():
             print(f"{key}: {value}")
 
-        combined_per_class_metrics = flatten_per_class_metrics(
-            prefix="combined",
-            evaluation=combined_evaluation,
-        )
+        evaluation_payload = {
+            "combined": evaluation,
+            "decision_quality": decision_quality_evaluation,
+            "offline_latency": offline_latency_evaluation,
+        }
+
+        if split_evidence:
+            evaluation_payload["split"] = split_evidence
 
         artifact = build_decision_artifact(
-            model=combined_model,
+            model=model,
             vectorizer=vectorizer,
             manual_feature_names=MANUAL_FEATURE_NAMES,
             known_actions=KNOWN_ACTIONS,
-            primary_model_accuracy=combined_accuracy,
+            primary_model_accuracy=accuracy,
             test_size=len(y_test),
             training_warnings=training_warnings,
-            evaluation={
-                "manual": manual_evaluation,
-                "tfidf": tfidf_evaluation,
-                "combined": combined_evaluation,
-                "decision_quality": decision_quality_evaluation,
-                "offline_latency": offline_latency_evaluation,
-            },
+            evaluation=evaluation_payload,
+            variant=variant_to_dict(variant),
+            feature_pipeline=feature_pipeline,
+            evaluation_code=evaluation_code,
+            experiment_config=experiment_config,
             metrics={
-                "manual_accuracy": round(float(manual_accuracy), 4),
-                "tfidf_accuracy": round(float(tfidf_accuracy), 4),
-                "combined_accuracy": round(float(combined_accuracy), 4),
-                "f1_macro": round(float(combined_f1), 4),
-                "manual_f1_macro": round(float(manual_f1), 4),
-                "tfidf_f1_macro": round(float(tfidf_f1), 4),
-                "combined_f1_macro": round(float(combined_f1), 4),
+                "combined_accuracy": round(float(accuracy), 4),
+                "f1_macro": round(float(f1), 4),
+                "combined_f1_macro": round(float(f1), 4),
                 "manual_feature_count": len(MANUAL_FEATURE_NAMES),
                 "tfidf_vocabulary_size": len(vectorizer.get_feature_names_out()),
                 "training_warning_count": training_warning_count,
                 "convergence_warning_count": convergence_warning_count,
-                **combined_per_class_metrics,
+                **per_class_metrics,
                 **decision_quality_metrics,
                 **offline_latency_metrics,
             },
@@ -876,6 +1141,129 @@ def main():
 
         artifact_dir = save_decision_artifact(artifact)
         log_mlflow_outputs(artifact=artifact, artifact_dir=artifact_dir)
+
+        return artifact_dir
+
+
+def main():
+    experiment_config = load_experiment_config_for_run()
+    experiment_config_payload = experiment_config_to_dict(experiment_config)
+    comparison_group_id = build_comparison_group_id(experiment_config)
+
+    print("\n--- Experiment Config ---")
+    print("experiment_name:", experiment_config.experiment_name)
+    print("comparison_type:", experiment_config.comparison_type)
+    print("changed_variable:", experiment_config.changed_variable)
+    print("experiment_config_path:", experiment_config.experiment_config_path)
+    print(
+        "experiment_config_sha256:",
+        experiment_config.experiment_config_sha256,
+    )
+    print("comparison_group_id:", comparison_group_id)
+
+    raw_logs = load_raw_logs()
+    rows, skipped = build_rows(raw_logs)
+
+    print("Dataset size:", len(rows))
+    print("Skipped examples:", len(skipped))
+
+    if skipped:
+        print("\nSkipped:")
+        for item in skipped:
+            print(item)
+
+    train_rows, test_rows = split_rows(rows)
+
+    split_evidence = build_split_evidence(
+        train_rows=train_rows,
+        test_rows=test_rows,
+        comparison_group_id=comparison_group_id,
+    )
+
+    print("\n--- Split Evidence ---")
+    print("split_sha256:", split_evidence["split_sha256"])
+    print("train_split_sha256:", split_evidence["train_split_sha256"])
+    print("test_split_sha256:", split_evidence["test_split_sha256"])
+    print("comparison_group_id:", split_evidence["comparison_group_id"])
+
+    X_train_text, X_train_manual, y_train = unpack_rows(train_rows)
+    X_test_text, X_test_manual, y_test = unpack_rows(test_rows)
+
+    X_train_manual_sparse = csr_matrix(X_train_manual)
+    X_test_manual_sparse = csr_matrix(X_test_manual)
+
+    vectorizer_kwargs = build_vectorizer_kwargs_from_experiment_config(
+        experiment_config
+    )
+
+    feature_pipeline_cfg = experiment_config.feature_pipeline
+
+    feature_pipeline_identity = build_feature_pipeline_identity(
+        feature_pipeline_name=feature_pipeline_cfg["feature_pipeline_name"],
+        vectorizer_name=feature_pipeline_cfg["vectorizer_name"],
+        vectorizer_params=dict(feature_pipeline_cfg.get("vectorizer_params", {})),
+        manual_feature_names=MANUAL_FEATURE_NAMES,
+    )
+
+    feature_pipeline = feature_pipeline_identity_to_dict(feature_pipeline_identity)
+
+    vectorizer = TfidfVectorizer(**vectorizer_kwargs)
+
+    X_train_tfidf = cast(csr_matrix, vectorizer.fit_transform(X_train_text))
+    X_test_tfidf = cast(csr_matrix, vectorizer.transform(X_test_text))
+
+    X_train_combined = hstack([X_train_manual_sparse, X_train_tfidf])
+    X_test_combined = hstack([X_test_manual_sparse, X_test_tfidf])
+
+    print("\n--- Feature Shapes ---")
+    print("X_train_manual shape:", X_train_manual_sparse.shape)
+    print("X_train_tfidf shape: ", X_train_tfidf.shape)
+    print("X_train_combined shape:", X_train_combined.shape)
+    print("manual feature count:", len(FEATURE_NAMES))
+    print("tfidf vocabulary size:", len(vectorizer.get_feature_names_out()))
+
+    variants = select_variants_for_run(experiment_config)
+
+    print("\n--- Variants Selected ---")
+    for variant in variants:
+        print("-", variant.variant_name)
+
+    print("feature_pipeline_name:", feature_pipeline["feature_pipeline_name"])
+    print("feature_pipeline_sha256:", feature_pipeline["feature_pipeline_sha256"])
+
+    evaluation_code = evaluation_code_identity_to_dict(
+        build_evaluation_code_identity()
+    )
+
+    print("\n--- Evaluation Code Identity ---")
+    print("evaluation_code_sha256:", evaluation_code["evaluation_code_sha256"])
+    print(
+        "evaluation_code_files:",
+        ",".join(file_info["path"] for file_info in evaluation_code["source_files"]),
+    )
+
+    artifact_dirs = []
+
+    for variant in variants:
+        artifact_dir = train_evaluate_and_log_variant(
+            variant=variant,
+            feature_pipeline=feature_pipeline,
+            evaluation_code=evaluation_code,
+            experiment_config=experiment_config_payload,
+            vectorizer=vectorizer,
+            X_train_combined=X_train_combined,
+            X_test_combined=X_test_combined,
+            y_train=y_train,
+            y_test=y_test,
+            test_rows=test_rows,
+            split_evidence=split_evidence,
+        )
+
+        artifact_dirs.append(str(artifact_dir))
+
+    print("\n--- Artifacts Created ---")
+    for artifact_dir in artifact_dirs:
+        print(artifact_dir)
 
 
 if __name__ == "__main__":

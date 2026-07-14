@@ -32,6 +32,7 @@ def test_latest_artifact_dir_has_required_files():
     assert (artifact_dir / "evaluation" / "confusion_matrix.txt").exists()
     assert (artifact_dir / "evaluation" / "decision_quality.json").exists()
     assert (artifact_dir / "evaluation" / "offline_latency.json").exists()
+    assert (artifact_dir / "evaluation" / "split_evidence.json").exists()
 
 
 def test_model_pkl_contains_only_model():
@@ -95,6 +96,7 @@ def test_manifest_holds_metadata_not_model_objects():
         "confusion_matrix_text",
         "decision_quality",
         "offline_latency",
+        "split_evidence",
     }
     assert set(manifest["hashes"].keys()) == {
         "model_sha256",

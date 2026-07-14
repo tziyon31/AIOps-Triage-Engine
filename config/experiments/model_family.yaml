@@ -1,0 +1,37 @@
+experiment_name: model_family_baseline
+comparison_type: model_family
+changed_variable: model_family
+
+controlled_variables:
+  - raw_data
+  - train_split
+  - test_split
+  - feature_pipeline
+  - policy
+  - evaluation_code
+
+feature_pipeline:
+  feature_pipeline_name: manual_features_plus_tfidf
+  vectorizer_name: TfidfVectorizer
+  vectorizer_params:
+    max_features: null
+    ngram_range: [1, 1]
+
+variants:
+  - variant_name: manual_tfidf_logistic_regression
+    variant_type: model_family
+    model_family: LogisticRegression
+    model_params:
+      model_family: LogisticRegression
+      model_max_iter: 1000
+      random_state: 42
+
+  - variant_name: manual_tfidf_sgd_log_loss
+    variant_type: model_family
+    model_family: SGDClassifier
+    model_params:
+      model_family: SGDClassifier
+      loss: log_loss
+      model_max_iter: 1000
+      random_state: 42
+      tol: 0.001

@@ -170,6 +170,8 @@ def validate_smoke_policy(decision: dict[str, Any]) -> None:
 def main() -> int:
     os.environ.setdefault("LOG_TRIAGE_DISABLE_LLM", "1")
     os.environ.setdefault("LOG_TRIAGE_DISABLE_MLFLOW", "1")
+    # Pipeline always trains the default single variant (not compare mode).
+    os.environ.pop("LOG_TRIAGE_COMPARE_VARIANTS", None)
 
     python = sys.executable
     run_id = RUN_ID
