@@ -169,6 +169,54 @@ For deterministic CI / Quality Gate runs, MLflow logging is disabled with:
 LOG_TRIAGE_DISABLE_MLFLOW=1
 ```
 
+## Config-driven experiments
+
+Stage 5.6 supports experiment definitions through YAML files under:
+
+```text
+config/experiments/
+```
+
+Default experiment:
+
+```text
+config/experiments/model_family.yaml
+```
+
+Run one default variant:
+
+```bash
+LOG_TRIAGE_EXPERIMENT_CONFIG=config/experiments/model_family.yaml \
+LOG_TRIAGE_DISABLE_LLM=1 \
+LOG_TRIAGE_DISABLE_MLFLOW=1 \
+.venv/bin/python -m src.log_triage.train
+```
+
+Run all variants in the experiment:
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+export MLFLOW_EXPERIMENT_NAME=log-triage-decision-engine
+export LOG_TRIAGE_EXPERIMENT_CONFIG=config/experiments/model_family.yaml
+export LOG_TRIAGE_COMPARE_VARIANTS=1
+
+.venv/bin/python -m src.log_triage.train
+```
+
+Compare runs:
+
+```bash
+.venv/bin/python scripts/compare_runs.py \
+  --experiment-name log-triage-decision-engine \
+  --comparison-group-id '<COMPARISON_GROUP_ID>'
+```
+
+See:
+
+```text
+docs/stage5/module_5_6_config_driven_experiments.md
+```
+
 Full notes: [docs/mlflow_notes.md](docs/mlflow_notes.md)
 
 ## Predict
