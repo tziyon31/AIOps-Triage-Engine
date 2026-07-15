@@ -1,4 +1,8 @@
-from scripts.promote import build_candidate_selection_report
+from scripts.promote import (
+    build_candidate_lifecycle_plan,
+    build_candidate_selection_report,
+    build_current_candidate_state,
+)
 
 
 def make_run(
@@ -213,3 +217,62 @@ def test_candidate_selection_does_not_select_when_comparison_invalid():
 
     assert report["selection_status"] == "no_candidate_selected"
     assert report["selected_candidate"] is None
+
+
+def test_candidate_lifecycle_plan_supersedes_previous_current_candidate():
+    plan = build_candidate_lifecycle_plan(
+        selected_run_id="new-run",
+        current_candidate_run_ids=["old-run"],
+    )
+
+    assert plan["new_current_candidate_run_id"] == "new-run"
+    assert plan["previous_current_candidate_run_ids"] == ["old-run"]
+    assert plan["superseded_run_ids"] == ["old-run"]
+    assert plan["already_current"] is False
+
+
+def test_candidate_lifecycle_plan_is_idempotent_when_selected_is_already_current():
+    plan = build_candidate_lifecycle_plan(
+        selected_run_id="same-run",
+        current_candidate_run_ids=["same-run"],
+    )
+
+    assert plan["new_current_candidate_run_id"] == "same-run"
+    assert plan["superseded_run_ids"] == []
+    assert plan["already_current"] is True
+
+
+def test_current_candidate_state_contains_selected_candidate_metadata():
+    report = {
+        "generated_at": "2026-01-01T00:00:00+00:00",
+        "selected_candidate": {
+            "run_id": "new-run",
+            "variant_name": "manual_tfidf_logistic_regression",
+        },
+        "baseline_run": {
+            "run_id": "baseline-run",
+        },
+        "comparison_group_id": "group-a",
+        "experiment_name": "log-triage-decision-engine",
+        "candidate_selection_policy": {
+            "policy_name": "decision_engine_candidate_selection",
+            "policy_version": "v1",
+        },
+        "selection_status": "selected",
+        "mode": "apply",
+    }
+
+    lifecycle_plan = {
+        "previous_current_candidate_run_ids": ["old-run"],
+        "superseded_run_ids": ["old-run"],
+    }
+
+    state = build_current_candidate_state(
+        report=report,
+        lifecycle_plan=lifecycle_plan,
+    )
+
+    assert state["current_candidate_run_id"] == "new-run"
+    assert state["previous_current_candidate_run_ids"] == ["old-run"]
+    assert state["superseded_run_ids"] == ["old-run"]
+    assert state["baseline_run_id"] == "baseline-run"
