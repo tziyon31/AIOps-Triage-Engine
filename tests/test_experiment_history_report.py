@@ -10,6 +10,9 @@ def make_run(
     group_id: str,
     variant_name: str,
     f1_macro: float,
+    low_confidence_rate: float = 0.1,
+    weakest_class_recall: float = 0.9,
+    latency_p95_ms: float = 10.0,
 ) -> dict:
     return {
         "run_id": run_id,
@@ -44,9 +47,10 @@ def make_run(
         "metrics": {
             "f1_macro": f1_macro,
             "combined_accuracy": f1_macro,
-            "low_confidence_rate": 0.1,
+            "combined_weakest_class_recall": weakest_class_recall,
+            "low_confidence_rate": low_confidence_rate,
             "approval_required_rate": 0.2,
-            "offline_decision_latency_p95_ms": 10.0,
+            "offline_decision_latency_p95_ms": latency_p95_ms,
         },
     }
 
@@ -129,3 +133,108 @@ def test_experiment_history_report_marks_single_run_group_invalid():
     assert group["status"] == "invalid"
     assert group["ready_for_candidate_selection"] is False
     assert "at_least_two_runs" in group["blocked_reason"]
+
+
+def test_experiment_history_recommends_candidate_selection_for_clean_valid_group():
+    runs = [
+        make_run(
+            run_id="run-1",
+            group_id="group-a",
+            variant_name="manual_tfidf_logistic_regression",
+            f1_macro=0.95,
+            low_confidence_rate=0.05,
+            weakest_class_recall=0.9,
+            latency_p95_ms=10.0,
+        ),
+        make_run(
+            run_id="run-2",
+            group_id="group-a",
+            variant_name="manual_tfidf_sgd_log_loss",
+            f1_macro=0.80,
+            low_confidence_rate=0.10,
+            weakest_class_recall=0.85,
+            latency_p95_ms=10.0,
+        ),
+    ]
+
+    report = build_experiment_history_report(
+        experiment_name="log-triage-decision-engine",
+        runs=runs,
+    )
+
+    recommendation = report["comparison_groups"][0][
+        "next_experiment_recommendation"
+    ]
+
+    assert recommendation["recommendation_type"] == "candidate_selection"
+    assert (
+        recommendation["recommended_next_experiment"]
+        == "candidate_selection_policy"
+    )
+
+    assert (
+        report["overall_next_step"]["recommended_next_experiment"]
+        == "candidate_selection_policy"
+    )
+
+
+def test_experiment_history_recommends_confidence_experiment_when_low_confidence_high():
+    runs = [
+        make_run(
+            run_id="run-1",
+            group_id="group-a",
+            variant_name="manual_tfidf_logistic_regression",
+            f1_macro=0.95,
+            low_confidence_rate=0.35,
+            weakest_class_recall=0.9,
+        ),
+        make_run(
+            run_id="run-2",
+            group_id="group-a",
+            variant_name="manual_tfidf_sgd_log_loss",
+            f1_macro=0.80,
+            low_confidence_rate=0.10,
+            weakest_class_recall=0.85,
+        ),
+    ]
+
+    report = build_experiment_history_report(
+        experiment_name="log-triage-decision-engine",
+        runs=runs,
+    )
+
+    recommendation = report["comparison_groups"][0][
+        "next_experiment_recommendation"
+    ]
+
+    assert recommendation["recommendation_type"] == (
+        "confidence_or_feature_experiment"
+    )
+    assert recommendation["recommended_next_experiment"] == (
+        "confidence_threshold_or_feature_pipeline"
+    )
+
+
+def test_experiment_history_recommends_rerun_for_invalid_group():
+    runs = [
+        make_run(
+            run_id="run-1",
+            group_id="group-a",
+            variant_name="manual_tfidf_logistic_regression",
+            f1_macro=0.9,
+        ),
+    ]
+
+    report = build_experiment_history_report(
+        experiment_name="log-triage-decision-engine",
+        runs=runs,
+    )
+
+    recommendation = report["comparison_groups"][0][
+        "next_experiment_recommendation"
+    ]
+
+    assert recommendation["recommendation_type"] == "rerun_invalid_comparison"
+    assert recommendation["recommended_next_experiment"] == (
+        "rerun_same_experiment_after_fixing_contract"
+    )
