@@ -176,6 +176,11 @@ def test_experiment_history_recommends_candidate_selection_for_clean_valid_group
         report["overall_next_step"]["recommended_next_experiment"]
         == "candidate_selection_policy"
     )
+    assert "candidate_selection_command" in report["overall_next_step"]
+    assert (
+        "scripts/promote.py"
+        in report["overall_next_step"]["candidate_selection_command"]
+    )
 
 
 def test_experiment_history_recommends_confidence_experiment_when_low_confidence_high():
@@ -237,4 +242,46 @@ def test_experiment_history_recommends_rerun_for_invalid_group():
     assert recommendation["recommendation_type"] == "rerun_invalid_comparison"
     assert recommendation["recommended_next_experiment"] == (
         "rerun_same_experiment_after_fixing_contract"
+    )
+
+
+def test_experiment_history_report_includes_candidate_selection_command():
+    runs = [
+        make_run(
+            run_id="run-1",
+            group_id="group-a",
+            variant_name="manual_tfidf_logistic_regression",
+            f1_macro=0.9,
+        ),
+        make_run(
+            run_id="run-2",
+            group_id="group-a",
+            variant_name="manual_tfidf_sgd_log_loss",
+            f1_macro=0.8,
+        ),
+    ]
+
+    report = build_experiment_history_report(
+        experiment_name="log-triage-decision-engine",
+        runs=runs,
+        candidate_policy_path="config/candidate_selection.yaml",
+    )
+
+    group = report["comparison_groups"][0]
+
+    assert "candidate_selection_command" in group
+    assert "scripts/promote.py" in group["candidate_selection_command"]
+    assert "--comparison-group-id group-a" in group["candidate_selection_command"]
+    assert "--baseline-run-id <BASELINE_RUN_ID>" in group[
+        "candidate_selection_command"
+    ]
+    assert "--candidate-policy-path config/candidate_selection.yaml" in group[
+        "candidate_selection_command"
+    ]
+    assert "--apply" not in group["candidate_selection_command"]
+
+    assert "candidate_selection_command" in report["overall_next_step"]
+    assert (
+        "scripts/promote.py"
+        in report["overall_next_step"]["candidate_selection_command"]
     )

@@ -26,6 +26,7 @@ from scripts.compare_runs import (
 
 
 DEFAULT_OUTPUT_DIR = "evidence/experiment_history"
+DEFAULT_CANDIDATE_POLICY_PATH = "config/candidate_selection.yaml"
 
 MEANINGFUL_F1_DELTA = 0.02
 LOW_CONFIDENCE_RATE_THRESHOLD = 0.20
@@ -49,8 +50,28 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT_DIR,
         help="Directory for experiment history outputs.",
     )
+    parser.add_argument(
+        "--candidate-policy-path",
+        default=DEFAULT_CANDIDATE_POLICY_PATH,
+        help="Candidate selection policy YAML path.",
+    )
 
     return parser.parse_args()
+
+
+def build_candidate_selection_command(
+    *,
+    experiment_name: str,
+    comparison_group_id: str,
+    candidate_policy_path: str,
+) -> str:
+    return (
+        ".venv/bin/python scripts/promote.py \\\n"
+        f"  --experiment-name {experiment_name} \\\n"
+        f"  --comparison-group-id {comparison_group_id} \\\n"
+        "  --baseline-run-id <BASELINE_RUN_ID> \\\n"
+        f"  --candidate-policy-path {candidate_policy_path}"
+    )
 
 
 def group_runs_by_comparison_group(
@@ -304,6 +325,8 @@ def summarize_comparison_group(
     *,
     comparison_group_id: str,
     runs: list[dict[str, Any]],
+    experiment_name: str,
+    candidate_policy_path: str,
 ) -> dict[str, Any]:
     complete_runs = filter_complete_runs(runs)
     controlled_variable_validation = validate_controlled_variables(complete_runs)
@@ -364,6 +387,11 @@ def summarize_comparison_group(
         "tradeoff_summary": build_tradeoff_summary(best_runs),
         "blocked_reason": blocked_reason,
         "next_experiment_recommendation": next_experiment_recommendation,
+        "candidate_selection_command": build_candidate_selection_command(
+            experiment_name=experiment_name,
+            comparison_group_id=comparison_group_id,
+            candidate_policy_path=candidate_policy_path,
+        ),
     }
 
 
@@ -377,6 +405,7 @@ def build_overall_next_step(
             "reason": "No MLflow comparison groups were found.",
             "evidence": [],
             "source_group_id": None,
+            "candidate_selection_command": None,
         }
 
     invalid_groups = [
@@ -392,6 +421,9 @@ def build_overall_next_step(
         return {
             **recommendation,
             "source_group_id": group["comparison_group_id"],
+            "candidate_selection_command": group.get(
+                "candidate_selection_command"
+            ),
         }
 
     non_candidate_recommendations = [
@@ -408,6 +440,9 @@ def build_overall_next_step(
         return {
             **recommendation,
             "source_group_id": group["comparison_group_id"],
+            "candidate_selection_command": group.get(
+                "candidate_selection_command"
+            ),
         }
 
     ready_groups = [
@@ -423,6 +458,9 @@ def build_overall_next_step(
         return {
             **recommendation,
             "source_group_id": group["comparison_group_id"],
+            "candidate_selection_command": group.get(
+                "candidate_selection_command"
+            ),
         }
 
     return {
@@ -431,6 +469,7 @@ def build_overall_next_step(
         "reason": "No valid or ready comparison group was found.",
         "evidence": [],
         "source_group_id": None,
+        "candidate_selection_command": None,
     }
 
 
@@ -438,6 +477,7 @@ def build_experiment_history_report(
     *,
     experiment_name: str,
     runs: list[dict[str, Any]],
+    candidate_policy_path: str = DEFAULT_CANDIDATE_POLICY_PATH,
 ) -> dict[str, Any]:
     grouped = group_runs_by_comparison_group(runs)
 
@@ -445,6 +485,8 @@ def build_experiment_history_report(
         summarize_comparison_group(
             comparison_group_id=group_id,
             runs=group_runs,
+            experiment_name=experiment_name,
+            candidate_policy_path=candidate_policy_path,
         )
         for group_id, group_runs in sorted(grouped.items())
     ]
@@ -502,6 +544,20 @@ def build_markdown_report(report: dict[str, Any]) -> str:
 
     for item in report["overall_next_step"].get("evidence", []):
         lines.append(f"- `{item}`")
+
+    command = report["overall_next_step"].get("candidate_selection_command")
+
+    if command:
+        lines.extend(
+            [
+                "",
+                "Candidate selection dry-run command:",
+                "",
+                "```bash",
+                command,
+                "```",
+            ]
+        )
 
     lines.extend(
         [
@@ -578,6 +634,20 @@ def build_markdown_report(report: dict[str, Any]) -> str:
                 ]
             )
 
+            command = group.get("candidate_selection_command")
+
+            if command:
+                lines.extend(
+                    [
+                        "Candidate selection dry-run command:",
+                        "",
+                        "```bash",
+                        command,
+                        "```",
+                        "",
+                    ]
+                )
+
     lines.extend(
         [
             "## Interpretation",
@@ -624,6 +694,7 @@ def main() -> None:
     report = build_experiment_history_report(
         experiment_name=args.experiment_name,
         runs=runs,
+        candidate_policy_path=args.candidate_policy_path,
     )
 
     output_dir = Path(args.output_dir)
