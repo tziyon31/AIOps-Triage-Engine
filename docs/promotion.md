@@ -35,6 +35,20 @@ Promotion without a baseline is blocked.
 
 This prevents selecting a run that looks good in isolation but is worse than the current baseline.
 
+## Baseline guard
+
+If a current candidate already exists, `promote.py` requires `--baseline-run-id` to match that current candidate.
+
+This prevents accidentally promoting a challenger against a weaker or stale baseline.
+
+Allowed cases:
+
+1. No current candidate exists: bootstrap mode.
+2. Baseline matches the current candidate.
+3. Non-current baseline is explicitly allowed with `--allow-non-current-baseline` and `--baseline-override-reason`.
+
+A mismatch without explicit override blocks candidate selection.
+
 ## Dry-run by default
 
 `scripts/promote.py` does not tag MLflow unless `--apply` is passed.

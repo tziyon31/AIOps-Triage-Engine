@@ -85,6 +85,19 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Actually tag the selected MLflow run. Default is dry-run.",
     )
+    parser.add_argument(
+        "--allow-non-current-baseline",
+        action="store_true",
+        help=(
+            "Allow baseline-run-id that does not match the current candidate. "
+            "Requires --baseline-override-reason."
+        ),
+    )
+    parser.add_argument(
+        "--baseline-override-reason",
+        default=None,
+        help="Required reason when using --allow-non-current-baseline.",
+    )
 
     return parser.parse_args()
 
@@ -313,6 +326,70 @@ def find_current_candidate_run_ids(*, experiment_id: str) -> list[str]:
     ]
 
 
+def build_baseline_guard(
+    *,
+    baseline_run_id: str,
+    current_candidate_run_ids: list[str],
+    allow_non_current_baseline: bool = False,
+    baseline_override_reason: str | None = None,
+) -> dict[str, Any]:
+    if not current_candidate_run_ids:
+        return {
+            "status": "passed",
+            "mode": "bootstrap_no_current_candidate",
+            "reason": "no_current_candidate_exists",
+            "baseline_run_id": baseline_run_id,
+            "current_candidate_run_ids": [],
+            "allow_non_current_baseline": allow_non_current_baseline,
+            "baseline_override_reason": baseline_override_reason,
+        }
+
+    if len(current_candidate_run_ids) > 1:
+        return {
+            "status": "failed",
+            "mode": "ambiguous_current_candidate",
+            "reason": "multiple_current_candidates_found",
+            "baseline_run_id": baseline_run_id,
+            "current_candidate_run_ids": current_candidate_run_ids,
+            "allow_non_current_baseline": allow_non_current_baseline,
+            "baseline_override_reason": baseline_override_reason,
+        }
+
+    current_candidate_run_id = current_candidate_run_ids[0]
+
+    if baseline_run_id == current_candidate_run_id:
+        return {
+            "status": "passed",
+            "mode": "baseline_matches_current_candidate",
+            "reason": "baseline_run_id_matches_current_candidate",
+            "baseline_run_id": baseline_run_id,
+            "current_candidate_run_ids": current_candidate_run_ids,
+            "allow_non_current_baseline": allow_non_current_baseline,
+            "baseline_override_reason": baseline_override_reason,
+        }
+
+    if allow_non_current_baseline and baseline_override_reason:
+        return {
+            "status": "passed_with_override",
+            "mode": "non_current_baseline_override",
+            "reason": "non_current_baseline_allowed_with_explicit_reason",
+            "baseline_run_id": baseline_run_id,
+            "current_candidate_run_ids": current_candidate_run_ids,
+            "allow_non_current_baseline": allow_non_current_baseline,
+            "baseline_override_reason": baseline_override_reason,
+        }
+
+    return {
+        "status": "failed",
+        "mode": "baseline_mismatch",
+        "reason": "baseline_run_id_does_not_match_current_candidate",
+        "baseline_run_id": baseline_run_id,
+        "current_candidate_run_ids": current_candidate_run_ids,
+        "allow_non_current_baseline": allow_non_current_baseline,
+        "baseline_override_reason": baseline_override_reason,
+    }
+
+
 def build_candidate_lifecycle_plan(
     *,
     selected_run_id: str | None,
@@ -416,6 +493,7 @@ def build_candidate_selection_report(
     policy: dict[str, Any],
     apply: bool,
     current_candidate_run_ids: list[str] | None = None,
+    baseline_guard: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     candidate_evaluations = evaluate_candidates(
         candidate_runs=candidate_runs,
@@ -423,15 +501,27 @@ def build_candidate_selection_report(
         policy=policy,
     )
 
+    baseline_guard_status = (
+        "passed"
+        if baseline_guard is None
+        else baseline_guard["status"]
+    )
+
+    baseline_guard_passed = baseline_guard_status in {
+        "passed",
+        "passed_with_override",
+    }
+
     selected = None
-    if comparison_contract["status"] == "valid":
+    if comparison_contract["status"] == "valid" and baseline_guard_passed:
         selected = select_candidate(candidate_evaluations)
 
-    selection_status = (
-        "selected"
-        if selected is not None
-        else "no_candidate_selected"
-    )
+    if not baseline_guard_passed:
+        selection_status = "blocked_by_baseline_guard"
+    elif selected is not None:
+        selection_status = "selected"
+    else:
+        selection_status = "no_candidate_selected"
 
     lifecycle_plan = build_candidate_lifecycle_plan(
         selected_run_id=None if selected is None else selected["run"]["run_id"],
@@ -456,6 +546,7 @@ def build_candidate_selection_report(
             "tie_breakers": policy.get("tie_breakers", []),
         },
         "baseline_run": summarize_run(baseline_run),
+        "baseline_guard": baseline_guard,
         "selected_candidate": None
         if selected is None
         else {
@@ -503,9 +594,26 @@ def build_markdown_report(report: dict[str, Any]) -> str:
         f"- Variant: `{report['baseline_run']['variant_name']}`",
         f"- f1_macro: `{report['baseline_run']['metrics']['f1_macro']}`",
         "",
-        "## Selected Candidate",
-        "",
     ]
+
+    baseline_guard = report.get("baseline_guard") or {}
+
+    lines.extend(
+        [
+            "## Baseline Guard",
+            "",
+            f"- Status: `{baseline_guard.get('status')}`",
+            f"- Mode: `{baseline_guard.get('mode')}`",
+            f"- Reason: `{baseline_guard.get('reason')}`",
+            f"- Baseline run ID: `{baseline_guard.get('baseline_run_id')}`",
+            f"- Current candidate run IDs: `{baseline_guard.get('current_candidate_run_ids')}`",
+            f"- Override allowed: `{baseline_guard.get('allow_non_current_baseline')}`",
+            f"- Override reason: `{baseline_guard.get('baseline_override_reason')}`",
+            "",
+            "## Selected Candidate",
+            "",
+        ]
+    )
 
     if selected is None:
         lines.append("No candidate selected.")
@@ -663,6 +771,13 @@ def main() -> None:
         experiment_id=experiment_id
     )
 
+    baseline_guard = build_baseline_guard(
+        baseline_run_id=args.baseline_run_id,
+        current_candidate_run_ids=current_candidate_run_ids,
+        allow_non_current_baseline=args.allow_non_current_baseline,
+        baseline_override_reason=args.baseline_override_reason,
+    )
+
     report = build_candidate_selection_report(
         experiment_name=args.experiment_name,
         comparison_group_id=args.comparison_group_id,
@@ -673,6 +788,7 @@ def main() -> None:
         policy=policy,
         apply=args.apply,
         current_candidate_run_ids=current_candidate_run_ids,
+        baseline_guard=baseline_guard,
     )
 
     json_path, md_path = write_report(
@@ -686,6 +802,13 @@ def main() -> None:
 
     if report["comparison_contract"]["status"] != "valid":
         print("Candidate selection blocked: comparison contract is invalid.")
+        raise SystemExit(2)
+
+    if report["baseline_guard"] and report["baseline_guard"]["status"] == "failed":
+        print(
+            "Candidate selection blocked by baseline guard: "
+            f"{report['baseline_guard']['reason']}"
+        )
         raise SystemExit(2)
 
     if report["selected_candidate"] is None:

@@ -1,4 +1,5 @@
 from scripts.promote import (
+    build_baseline_guard,
     build_candidate_lifecycle_plan,
     build_candidate_selection_report,
     build_current_candidate_state,
@@ -276,3 +277,102 @@ def test_current_candidate_state_contains_selected_candidate_metadata():
     assert state["previous_current_candidate_run_ids"] == ["old-run"]
     assert state["superseded_run_ids"] == ["old-run"]
     assert state["baseline_run_id"] == "baseline-run"
+
+
+def test_baseline_guard_passes_when_no_current_candidate_exists():
+    guard = build_baseline_guard(
+        baseline_run_id="baseline",
+        current_candidate_run_ids=[],
+    )
+
+    assert guard["status"] == "passed"
+    assert guard["mode"] == "bootstrap_no_current_candidate"
+
+
+def test_baseline_guard_passes_when_baseline_matches_current_candidate():
+    guard = build_baseline_guard(
+        baseline_run_id="current-run",
+        current_candidate_run_ids=["current-run"],
+    )
+
+    assert guard["status"] == "passed"
+    assert guard["mode"] == "baseline_matches_current_candidate"
+
+
+def test_baseline_guard_fails_when_baseline_does_not_match_current_candidate():
+    guard = build_baseline_guard(
+        baseline_run_id="weak-baseline",
+        current_candidate_run_ids=["current-run"],
+    )
+
+    assert guard["status"] == "failed"
+    assert guard["reason"] == "baseline_run_id_does_not_match_current_candidate"
+
+
+def test_baseline_guard_fails_when_multiple_current_candidates_exist():
+    guard = build_baseline_guard(
+        baseline_run_id="current-a",
+        current_candidate_run_ids=["current-a", "current-b"],
+    )
+
+    assert guard["status"] == "failed"
+    assert guard["reason"] == "multiple_current_candidates_found"
+
+
+def test_baseline_guard_allows_explicit_override_with_reason():
+    guard = build_baseline_guard(
+        baseline_run_id="manual-baseline",
+        current_candidate_run_ids=["current-run"],
+        allow_non_current_baseline=True,
+        baseline_override_reason="bootstrap correction test",
+    )
+
+    assert guard["status"] == "passed_with_override"
+    assert guard["mode"] == "non_current_baseline_override"
+
+
+def test_baseline_guard_blocks_override_without_reason():
+    guard = build_baseline_guard(
+        baseline_run_id="manual-baseline",
+        current_candidate_run_ids=["current-run"],
+        allow_non_current_baseline=True,
+        baseline_override_reason=None,
+    )
+
+    assert guard["status"] == "failed"
+
+
+def test_candidate_selection_report_blocks_selection_when_baseline_guard_fails():
+    baseline = make_run(
+        run_id="weak-baseline",
+        variant_name="weak-baseline",
+        f1_macro=0.80,
+    )
+
+    candidate = make_run(
+        run_id="candidate-a",
+        variant_name="candidate-a",
+        f1_macro=0.90,
+    )
+
+    baseline_guard = build_baseline_guard(
+        baseline_run_id="weak-baseline",
+        current_candidate_run_ids=["current-strong-run"],
+    )
+
+    report = build_candidate_selection_report(
+        experiment_name="log-triage-decision-engine",
+        comparison_group_id="group-a",
+        comparison_contract=valid_contract(),
+        controlled_variable_validation=valid_controlled_variable_validation(),
+        baseline_run=baseline,
+        candidate_runs=[candidate],
+        policy=make_policy(),
+        apply=False,
+        current_candidate_run_ids=["current-strong-run"],
+        baseline_guard=baseline_guard,
+    )
+
+    assert report["selection_status"] == "blocked_by_baseline_guard"
+    assert report["selected_candidate"] is None
+    assert report["baseline_guard"]["status"] == "failed"
