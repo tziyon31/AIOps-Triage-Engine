@@ -2,6 +2,8 @@ from scripts.promote import (
     build_baseline_guard,
     build_candidate_lifecycle_plan,
     build_candidate_selection_report,
+    build_candidate_status_transition,
+    build_candidate_status_transitions,
     build_current_candidate_state,
 )
 
@@ -481,3 +483,143 @@ def test_candidate_selected_when_promotion_evidence_passes(monkeypatch):
 
     assert report["selection_status"] == "selected"
     assert report["selected_candidate"]["run_id"] == "candidate-a"
+
+
+def test_candidate_status_transition_marks_selected_candidate():
+    evaluation = {
+        "run_summary": {
+            "run_id": "candidate-a",
+            "variant_name": "candidate-a",
+        },
+        "eligible": True,
+        "reason": "candidate_policy_and_baseline_passed",
+    }
+
+    transition = build_candidate_status_transition(
+        evaluation=evaluation,
+        selected_run_id="candidate-a",
+        baseline_run_id="baseline",
+    )
+
+    assert transition["action"] == "update"
+    assert transition["new_candidate_status"] == "selected"
+    assert transition["candidate"] == "true"
+    assert transition["current_candidate"] == "true"
+
+
+def test_candidate_status_transition_marks_eligible_non_selected_candidate():
+    evaluation = {
+        "run_summary": {
+            "run_id": "candidate-b",
+            "variant_name": "candidate-b",
+        },
+        "eligible": True,
+        "reason": "candidate_policy_and_baseline_passed",
+    }
+
+    transition = build_candidate_status_transition(
+        evaluation=evaluation,
+        selected_run_id="candidate-a",
+        baseline_run_id="baseline",
+    )
+
+    assert transition["action"] == "update"
+    assert transition["new_candidate_status"] == "eligible"
+    assert transition["candidate"] == "false"
+    assert transition["current_candidate"] == "false"
+
+
+def test_candidate_status_transition_marks_rejected_candidate():
+    evaluation = {
+        "run_summary": {
+            "run_id": "candidate-c",
+            "variant_name": "candidate-c",
+        },
+        "eligible": False,
+        "reason": "promotion_evidence_contract_failed",
+    }
+
+    transition = build_candidate_status_transition(
+        evaluation=evaluation,
+        selected_run_id="candidate-a",
+        baseline_run_id="baseline",
+    )
+
+    assert transition["action"] == "update"
+    assert transition["new_candidate_status"] == "rejected"
+    assert transition["promotion_reason"] == "promotion_evidence_contract_failed"
+    assert transition["candidate"] == "false"
+
+
+def test_candidate_status_transition_skips_baseline_run():
+    evaluation = {
+        "run_summary": {
+            "run_id": "baseline",
+            "variant_name": "baseline",
+        },
+        "eligible": False,
+        "reason": "candidate_is_baseline_run",
+    }
+
+    transition = build_candidate_status_transition(
+        evaluation=evaluation,
+        selected_run_id="candidate-a",
+        baseline_run_id="baseline",
+    )
+
+    assert transition["action"] == "skip"
+    assert transition["new_candidate_status"] is None
+    assert transition["promotion_reason"] == "baseline_run_status_not_changed"
+
+
+def test_candidate_selection_report_includes_status_transitions(monkeypatch):
+    baseline = make_run(
+        run_id="baseline",
+        variant_name="baseline",
+        f1_macro=0.80,
+    )
+
+    candidate = make_run(
+        run_id="candidate-a",
+        variant_name="candidate-a",
+        f1_macro=0.90,
+    )
+
+    def fake_evidence_result(*, run_id, contract):
+        return {
+            "status": "passed",
+            "contract_name": "promotion_evidence_contract",
+            "contract_version": "v1",
+            "missing_params": [],
+            "missing_metrics": [],
+            "missing_tags": [],
+            "missing_artifacts": [],
+        }
+
+    monkeypatch.setattr(
+        "scripts.promote.build_promotion_evidence_result",
+        fake_evidence_result,
+    )
+
+    report = build_candidate_selection_report(
+        experiment_name="log-triage-decision-engine",
+        comparison_group_id="group-a",
+        comparison_contract=valid_contract(),
+        controlled_variable_validation=valid_controlled_variable_validation(),
+        baseline_run=baseline,
+        candidate_runs=[candidate],
+        policy=make_policy(),
+        apply=False,
+        promotion_evidence_contract={
+            "contract_name": "promotion_evidence_contract",
+            "contract_version": "v1",
+            "contract_path": "config/promotion_evidence_contract.yaml",
+            "status": "learning_contract_not_production_registry",
+        },
+    )
+
+    assert report["candidate_status_transitions"][0]["run_id"] == "candidate-a"
+    assert (
+        report["candidate_status_transitions"][0]["new_candidate_status"]
+        == "selected"
+    )

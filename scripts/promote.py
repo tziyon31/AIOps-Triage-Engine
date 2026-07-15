@@ -502,6 +502,82 @@ def build_candidate_lifecycle_plan(
     }
 
 
+def build_candidate_status_transition(
+    *,
+    evaluation: dict[str, Any],
+    selected_run_id: str | None,
+    baseline_run_id: str,
+) -> dict[str, Any]:
+    run_summary = evaluation["run_summary"]
+    run_id = run_summary["run_id"]
+
+    if run_id == baseline_run_id and run_id != selected_run_id:
+        return {
+            "run_id": run_id,
+            "variant_name": run_summary.get("variant_name", "unknown"),
+            "action": "skip",
+            "new_candidate_status": None,
+            "promotion_reason": "baseline_run_status_not_changed",
+            "candidate": None,
+            "current_candidate": None,
+        }
+
+    if selected_run_id is not None and run_id == selected_run_id:
+        return {
+            "run_id": run_id,
+            "variant_name": run_summary.get("variant_name", "unknown"),
+            "action": "update",
+            "new_candidate_status": "selected",
+            "promotion_reason": evaluation.get(
+                "reason",
+                "candidate_policy_and_baseline_passed",
+            ),
+            "candidate": "true",
+            "current_candidate": "true",
+        }
+
+    if evaluation.get("eligible") is True:
+        return {
+            "run_id": run_id,
+            "variant_name": run_summary.get("variant_name", "unknown"),
+            "action": "update",
+            "new_candidate_status": "eligible",
+            "promotion_reason": "eligible_but_not_selected_better_candidate_exists",
+            "candidate": "false",
+            "current_candidate": "false",
+        }
+
+    return {
+        "run_id": run_id,
+        "variant_name": run_summary.get("variant_name", "unknown"),
+        "action": "update",
+        "new_candidate_status": "rejected",
+        "promotion_reason": evaluation.get("reason", "candidate_rejected"),
+        "candidate": "false",
+        "current_candidate": "false",
+    }
+
+
+def build_candidate_status_transitions(
+    *,
+    candidate_evaluations: list[dict[str, Any]],
+    selected_candidate: dict[str, Any] | None,
+    baseline_run_id: str,
+) -> list[dict[str, Any]]:
+    selected_run_id = (
+        None if selected_candidate is None else selected_candidate["run_id"]
+    )
+
+    return [
+        build_candidate_status_transition(
+            evaluation=evaluation,
+            selected_run_id=selected_run_id,
+            baseline_run_id=baseline_run_id,
+        )
+        for evaluation in candidate_evaluations
+    ]
+
+
 def build_current_candidate_state(
     *,
     report: dict[str, Any],
@@ -612,6 +688,24 @@ def build_candidate_selection_report(
         current_candidate_run_ids=current_candidate_run_ids or [],
     )
 
+    selected_candidate_summary = None
+    if selected is not None:
+        selected_candidate_summary = {
+            "run_id": selected["run"]["run_id"],
+            "variant_name": selected["run"]["tags"].get(
+                "variant_name",
+                "unknown",
+            ),
+            "reason": selected["reason"],
+            "metrics": summarize_run(selected["run"])["metrics"],
+        }
+
+    candidate_status_transitions = build_candidate_status_transitions(
+        candidate_evaluations=candidate_evaluations,
+        selected_candidate=selected_candidate_summary,
+        baseline_run_id=baseline_run["run_id"],
+    )
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "mode": "apply" if apply else "dry_run",
@@ -639,17 +733,7 @@ def build_candidate_selection_report(
         },
         "baseline_run": summarize_run(baseline_run),
         "baseline_guard": baseline_guard,
-        "selected_candidate": None
-        if selected is None
-        else {
-            "run_id": selected["run"]["run_id"],
-            "variant_name": selected["run"]["tags"].get(
-                "variant_name",
-                "unknown",
-            ),
-            "reason": selected["reason"],
-            "metrics": summarize_run(selected["run"])["metrics"],
-        },
+        "selected_candidate": selected_candidate_summary,
         "candidate_evaluations": [
             {
                 key: value
@@ -658,6 +742,7 @@ def build_candidate_selection_report(
             }
             for candidate in candidate_evaluations
         ],
+        "candidate_status_transitions": candidate_status_transitions,
         "candidate_lifecycle": lifecycle_plan,
     }
 
@@ -777,6 +862,27 @@ def build_markdown_report(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Candidate Status Transitions",
+            "",
+            "| Variant | Run ID | Action | New status | Reason |",
+            "|---|---|---|---|---|",
+        ]
+    )
+
+    for transition in report.get("candidate_status_transitions", []):
+        lines.append(
+            "| {variant} | {run_id} | {action} | {status} | {reason} |".format(
+                variant=transition.get("variant_name", "unknown"),
+                run_id=transition["run_id"],
+                action=transition["action"],
+                status=transition.get("new_candidate_status"),
+                reason=transition.get("promotion_reason"),
+            )
+        )
+
+    lines.extend(
+        [
+            "",
             "## Interpretation",
             "",
             "This report selects a candidate only according to the offline candidate-selection policy.",
@@ -841,6 +947,44 @@ def apply_mlflow_candidate_tags(
             build_markdown_report(report),
             artifact_file="promotion_report.md",
         )
+
+
+def apply_candidate_status_transition_tags(
+    *,
+    report: dict[str, Any],
+) -> None:
+    client = MlflowClient()
+    generated_at = report["generated_at"]
+    policy = report["candidate_selection_policy"]
+    evidence_contract = report.get("promotion_evidence_contract") or {}
+
+    for transition in report.get("candidate_status_transitions", []):
+        if transition["action"] == "skip":
+            continue
+
+        run_id = transition["run_id"]
+        status = transition["new_candidate_status"]
+        reason = transition["promotion_reason"]
+
+        client.set_tag(run_id, "candidate_status", status)
+        client.set_tag(run_id, "promotion_reason", reason)
+        client.set_tag(run_id, "promotion_evaluated_at", generated_at)
+        client.set_tag(run_id, "promotion_evaluation_mode", report["mode"])
+        client.set_tag(run_id, "candidate", transition["candidate"])
+        client.set_tag(run_id, "current_candidate", transition["current_candidate"])
+        client.set_tag(run_id, "candidate_policy_name", policy["policy_name"])
+        client.set_tag(run_id, "candidate_policy_version", policy["policy_version"])
+        client.set_tag(
+            run_id,
+            "promotion_evidence_contract_version",
+            evidence_contract.get("contract_version", "unknown"),
+        )
+
+        if status == "rejected":
+            client.set_tag(run_id, "promotion_rejection_reason", reason)
+
+        if status == "eligible":
+            client.set_tag(run_id, "promotion_eligible_reason", reason)
 
 
 def write_report(
@@ -950,6 +1094,7 @@ def main() -> None:
             selected_candidate=report["selected_candidate"],
             report=report,
         )
+        apply_candidate_status_transition_tags(report=report)
         print(
             "MLflow tags applied to selected candidate: "
             f"{report['selected_candidate']['run_id']}"
