@@ -27,6 +27,11 @@ from src.log_triage.candidate_selection import (
     load_candidate_selection_policy,
     read_metric,
 )
+from src.log_triage.promotion_evidence import (
+    DEFAULT_PROMOTION_EVIDENCE_CONTRACT_PATH,
+    load_promotion_evidence_contract,
+    validate_promotion_evidence,
+)
 
 
 DEFAULT_OUTPUT_DIR = "evidence/candidate_selection"
@@ -97,6 +102,11 @@ def parse_args() -> argparse.Namespace:
         "--baseline-override-reason",
         default=None,
         help="Required reason when using --allow-non-current-baseline.",
+    )
+    parser.add_argument(
+        "--promotion-evidence-contract-path",
+        default=DEFAULT_PROMOTION_EVIDENCE_CONTRACT_PATH,
+        help="Promotion evidence contract YAML path.",
     )
 
     return parser.parse_args()
@@ -188,6 +198,63 @@ def result_passed(result: dict[str, Any], policy: dict[str, Any]) -> bool:
     )
 
 
+def list_mlflow_artifact_paths(
+    *,
+    run_id: str,
+    path: str = "",
+) -> list[str]:
+    client = MlflowClient()
+    artifacts = []
+
+    for artifact in client.list_artifacts(run_id, path):
+        if artifact.is_dir:
+            artifacts.extend(
+                list_mlflow_artifact_paths(
+                    run_id=run_id,
+                    path=artifact.path,
+                )
+            )
+        else:
+            artifacts.append(artifact.path)
+
+    return artifacts
+
+
+def load_full_run_for_evidence(run_id: str) -> dict[str, Any]:
+    run = mlflow.get_run(run_id)
+
+    return {
+        "run_id": run.info.run_id,
+        "params": dict(run.data.params),
+        "metrics": dict(run.data.metrics),
+        "tags": dict(run.data.tags),
+    }
+
+
+def build_promotion_evidence_result(
+    *,
+    run_id: str,
+    contract: dict[str, Any],
+) -> dict[str, Any]:
+    full_run = load_full_run_for_evidence(run_id)
+    artifact_paths = list_mlflow_artifact_paths(run_id=run_id)
+
+    # Include basenames so nested MLflow paths such as
+    # decision_artifact/<id>/manifest.json satisfy required_artifacts.
+    artifact_paths_for_validation = list(
+        {
+            *artifact_paths,
+            *[Path(path).name for path in artifact_paths],
+        }
+    )
+
+    return validate_promotion_evidence(
+        run=full_run,
+        artifact_paths=artifact_paths_for_validation,
+        contract=contract,
+    )
+
+
 def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
     return {
         "run_id": run["run_id"],
@@ -236,6 +303,7 @@ def evaluate_candidates(
     candidate_runs: list[dict[str, Any]],
     baseline_run: dict[str, Any],
     policy: dict[str, Any],
+    promotion_evidence_contract: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     evaluations = []
 
@@ -250,6 +318,7 @@ def evaluate_candidates(
                     "reason": "candidate_is_baseline_run",
                     "policy_result": None,
                     "baseline_result": None,
+                    "promotion_evidence_result": None,
                 }
             )
             continue
@@ -261,16 +330,28 @@ def evaluate_candidates(
             policy=policy,
         )
 
+        evidence_result = None
+        evidence_passed = True
+
+        if promotion_evidence_contract is not None:
+            evidence_result = build_promotion_evidence_result(
+                run_id=run["run_id"],
+                contract=promotion_evidence_contract,
+            )
+            evidence_passed = evidence_result["status"] == "passed"
+
         policy_passed = result_passed(policy_result, policy)
         baseline_passed = result_passed(baseline_result, policy)
 
-        eligible = policy_passed and baseline_passed
+        eligible = policy_passed and baseline_passed and evidence_passed
 
         reasons = []
         if not policy_passed:
             reasons.append(policy_result.get("reason", "policy_failed"))
         if not baseline_passed:
             reasons.append(baseline_result.get("reason", "baseline_failed"))
+        if not evidence_passed:
+            reasons.append("promotion_evidence_contract_failed")
 
         evaluations.append(
             {
@@ -289,6 +370,7 @@ def evaluate_candidates(
                 ),
                 "policy_result": policy_result,
                 "baseline_result": baseline_result,
+                "promotion_evidence_result": evidence_result,
             }
         )
 
@@ -494,11 +576,13 @@ def build_candidate_selection_report(
     apply: bool,
     current_candidate_run_ids: list[str] | None = None,
     baseline_guard: dict[str, Any] | None = None,
+    promotion_evidence_contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     candidate_evaluations = evaluate_candidates(
         candidate_runs=candidate_runs,
         baseline_run=baseline_run,
         policy=policy,
+        promotion_evidence_contract=promotion_evidence_contract,
     )
 
     baseline_guard_status = (
@@ -544,6 +628,14 @@ def build_candidate_selection_report(
             "baseline": policy.get("baseline", {}),
             "thresholds": policy.get("thresholds", {}),
             "tie_breakers": policy.get("tie_breakers", []),
+        },
+        "promotion_evidence_contract": None
+        if promotion_evidence_contract is None
+        else {
+            "contract_name": promotion_evidence_contract["contract_name"],
+            "contract_version": promotion_evidence_contract["contract_version"],
+            "contract_path": promotion_evidence_contract["contract_path"],
+            "status": promotion_evidence_contract.get("status", "unknown"),
         },
         "baseline_run": summarize_run(baseline_run),
         "baseline_guard": baseline_guard,
@@ -625,6 +717,20 @@ def build_markdown_report(report: dict[str, Any]) -> str:
                 f"- Reason: `{selected['reason']}`",
                 f"- f1_macro: `{selected['metrics']['f1_macro']}`",
                 f"- p95 latency: `{selected['metrics']['offline_decision_latency_p95_ms']}`",
+            ]
+        )
+
+    evidence_contract = report.get("promotion_evidence_contract")
+
+    if evidence_contract:
+        lines.extend(
+            [
+                "",
+                "## Promotion Evidence Contract",
+                "",
+                f"- Name: `{evidence_contract['contract_name']}`",
+                f"- Version: `{evidence_contract['contract_version']}`",
+                f"- Path: `{evidence_contract['contract_path']}`",
             ]
         )
 
@@ -716,6 +822,26 @@ def apply_mlflow_candidate_tags(
         ",".join(lifecycle["previous_current_candidate_run_ids"]),
     )
 
+    evidence_contract = report.get("promotion_evidence_contract") or {}
+
+    client.set_tag(selected_run_id, "promotion_evidence_status", "passed")
+    client.set_tag(
+        selected_run_id,
+        "promotion_evidence_contract_name",
+        evidence_contract.get("contract_name", "unknown"),
+    )
+    client.set_tag(
+        selected_run_id,
+        "promotion_evidence_contract_version",
+        evidence_contract.get("contract_version", "unknown"),
+    )
+
+    with mlflow.start_run(run_id=selected_run_id):
+        mlflow.log_text(
+            build_markdown_report(report),
+            artifact_file="promotion_report.md",
+        )
+
 
 def write_report(
     *,
@@ -745,6 +871,9 @@ def main() -> None:
     args = parse_args()
 
     policy = load_candidate_selection_policy(args.candidate_policy_path)
+    promotion_evidence_contract = load_promotion_evidence_contract(
+        args.promotion_evidence_contract_path
+    )
     experiment_id = get_experiment_id(args.experiment_name)
 
     raw_runs = load_comparison_group_runs(
@@ -789,6 +918,7 @@ def main() -> None:
         apply=args.apply,
         current_candidate_run_ids=current_candidate_run_ids,
         baseline_guard=baseline_guard,
+        promotion_evidence_contract=promotion_evidence_contract,
     )
 
     json_path, md_path = write_report(
