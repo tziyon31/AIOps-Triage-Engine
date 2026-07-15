@@ -1,0 +1,45 @@
+contract_name: promotion_evidence_contract
+contract_version: v1
+status: learning_contract_not_production_registry
+
+required_params:
+  - model_family
+  - model_max_iter
+  - feature_pipeline_name
+  - feature_pipeline_sha256
+  - variant_name
+  - experiment_config_sha256
+
+required_metrics:
+  - f1_macro
+  - combined_accuracy
+  - combined_weakest_class_recall
+  - low_confidence_rate
+  - approval_required_rate
+  - offline_decision_latency_p95_ms
+
+required_tags:
+  - candidate_status
+  - promotion_reason
+  - run_owner
+  - comparison_group_id
+  - variant_name
+  - comparison_type
+  - changed_variable
+  - training_data_sha256
+  - train_split_sha256
+  - test_split_sha256
+  - policy_sha256
+  - evaluation_code_sha256
+  - experiment_config_sha256
+
+required_artifacts:
+  - manifest.json
+  - promotion_report.md
+
+candidate_statuses:
+  not_evaluated: "Run exists but was not evaluated for promotion."
+  eligible: "Run has all required evidence and may be considered."
+  rejected: "Run was evaluated and rejected."
+  selected: "Run was selected as candidate."
+  superseded: "Run was previously selected but replaced by a newer candidate."

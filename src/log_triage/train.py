@@ -74,6 +74,10 @@ from src.log_triage.experiments import (
     variant_to_dict,
 )
 from src.log_triage.features import MANUAL_FEATURE_NAMES
+from src.log_triage.promotion_evidence import (
+    build_default_promotion_report_text,
+    load_promotion_evidence_contract,
+)
 from src.log_triage.pipeline import (
     FEATURE_NAMES,
     KNOWN_ACTIONS,
@@ -454,6 +458,8 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
         if isinstance(value, (int, float)):
             mlflow.log_metric(key, float(value))
 
+    run_owner = os.getenv("LOG_TRIAGE_RUN_OWNER", "tziyon31")
+
     mlflow.set_tags(
         {
             "stage": "5",
@@ -474,7 +480,9 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
             "vectorizer_sha256": hashes["vectorizer_sha256"],
             "known_actions_sha256": hashes["known_actions_sha256"],
             "candidate_status": "not_evaluated",
-            "promotion_reason": "promotion_gate_not_implemented_yet",
+            "promotion_reason": "not_evaluated",
+            "run_owner": run_owner,
+            "promotion_evidence_contract_version": "v1",
             "quality_gate_status": "not_checked_in_train",
         }
     )
@@ -601,6 +609,20 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
 
     active_run = mlflow.active_run()
     if active_run is not None:
+        promotion_contract = load_promotion_evidence_contract()
+        promotion_report_text = build_default_promotion_report_text(
+            run_id=active_run.info.run_id,
+            variant_name=variant.get("variant_name", "unknown"),
+            candidate_status="not_evaluated",
+            promotion_reason="not_evaluated",
+            run_owner=run_owner,
+            contract=promotion_contract,
+        )
+        mlflow.log_text(
+            promotion_report_text,
+            artifact_file="promotion_report.md",
+        )
+
         print(f"\nMLflow run logged: {active_run.info.run_id}")
         print(f"MLflow artifact path: decision_artifact/{artifact_dir.name}")
 
