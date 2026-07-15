@@ -1,0 +1,34 @@
+experiment_name: final_candidate_tournament
+comparison_type: candidate_tournament
+changed_variable: candidate_config
+
+controlled_variables:
+  - raw_data
+  - train_split
+  - test_split
+  - policy
+  - evaluation_code
+
+feature_pipeline:
+  feature_pipeline_name: manual_features_plus_tfidf
+  vectorizer_name: TfidfVectorizer
+  vectorizer_params:
+    max_features: null
+    ngram_range: [1, 1]
+
+variants:
+  - variant_name: current_baseline_config
+    variant_type: candidate_config
+    model_family: LogisticRegression
+    model_params:
+      model_family: LogisticRegression
+      model_max_iter: 1000
+      random_state: 42
+
+  - variant_name: tuned_combined_candidate
+    variant_type: candidate_config
+    model_family: LogisticRegression
+    model_params:
+      model_family: LogisticRegression
+      model_max_iter: 1000
+      random_state: 42

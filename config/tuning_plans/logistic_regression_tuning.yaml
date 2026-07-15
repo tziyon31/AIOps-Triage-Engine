@@ -1,0 +1,34 @@
+tuning_plan_name: logistic_regression_tuning
+policy_version: v1
+status: planning_only_no_promotion
+
+description: >
+  Collect winners from multiple parameter experiments and build a combined
+  candidate draft. The combined candidate must still pass final validation
+  before promote.py can be used.
+
+winner_metric: f1_macro
+require_valid_comparison_groups: true
+require_final_validation: true
+
+experiments:
+  - label: max_iter_tuning
+    comparison_group_id: "<MAX_ITER_COMPARISON_GROUP_ID>"
+    changed_parameter: model_max_iter
+    notes: "Find the best max_iter value."
+
+  - label: regularization_tuning
+    comparison_group_id: "<C_COMPARISON_GROUP_ID>"
+    changed_parameter: model_C
+    notes: "Find the best regularization strength."
+
+  - label: vectorizer_ngram_tuning
+    comparison_group_id: "<NGRAM_COMPARISON_GROUP_ID>"
+    changed_parameter: tfidf_ngram_range
+    notes: "Find the best ngram range."
+
+final_validation:
+  required: true
+  recommended_experiment_name: final_candidate_tournament
+  recommended_changed_variable: candidate_config
+  baseline_required: true
