@@ -376,3 +376,108 @@ def test_candidate_selection_report_blocks_selection_when_baseline_guard_fails()
     assert report["selection_status"] == "blocked_by_baseline_guard"
     assert report["selected_candidate"] is None
     assert report["baseline_guard"]["status"] == "failed"
+
+
+def test_candidate_rejected_when_promotion_evidence_fails(monkeypatch):
+    baseline = make_run(
+        run_id="baseline",
+        variant_name="baseline",
+        f1_macro=0.80,
+    )
+
+    candidate = make_run(
+        run_id="candidate-a",
+        variant_name="candidate-a",
+        f1_macro=0.90,
+    )
+
+    def fake_evidence_result(*, run_id, contract):
+        return {
+            "status": "failed",
+            "contract_name": "promotion_evidence_contract",
+            "contract_version": "v1",
+            "missing_params": [],
+            "missing_metrics": ["f1_macro"],
+            "missing_tags": [],
+            "missing_artifacts": [],
+        }
+
+    monkeypatch.setattr(
+        "scripts.promote.build_promotion_evidence_result",
+        fake_evidence_result,
+    )
+
+    report = build_candidate_selection_report(
+        experiment_name="log-triage-decision-engine",
+        comparison_group_id="group-a",
+        comparison_contract=valid_contract(),
+        controlled_variable_validation=valid_controlled_variable_validation(),
+        baseline_run=baseline,
+        candidate_runs=[candidate],
+        policy=make_policy(),
+        apply=False,
+        promotion_evidence_contract={
+            "contract_name": "promotion_evidence_contract",
+            "contract_version": "v1",
+            "contract_path": "config/promotion_evidence_contract.yaml",
+            "status": "learning_contract_not_production_registry",
+        },
+    )
+
+    assert report["selection_status"] == "no_candidate_selected"
+    assert report["selected_candidate"] is None
+    assert report["candidate_evaluations"][0]["eligible"] is False
+    assert (
+        report["candidate_evaluations"][0]["reason"]
+        == "promotion_evidence_contract_failed"
+    )
+
+
+def test_candidate_selected_when_promotion_evidence_passes(monkeypatch):
+    baseline = make_run(
+        run_id="baseline",
+        variant_name="baseline",
+        f1_macro=0.80,
+    )
+
+    candidate = make_run(
+        run_id="candidate-a",
+        variant_name="candidate-a",
+        f1_macro=0.90,
+    )
+
+    def fake_evidence_result(*, run_id, contract):
+        return {
+            "status": "passed",
+            "contract_name": "promotion_evidence_contract",
+            "contract_version": "v1",
+            "missing_params": [],
+            "missing_metrics": [],
+            "missing_tags": [],
+            "missing_artifacts": [],
+        }
+
+    monkeypatch.setattr(
+        "scripts.promote.build_promotion_evidence_result",
+        fake_evidence_result,
+    )
+
+    report = build_candidate_selection_report(
+        experiment_name="log-triage-decision-engine",
+        comparison_group_id="group-a",
+        comparison_contract=valid_contract(),
+        controlled_variable_validation=valid_controlled_variable_validation(),
+        baseline_run=baseline,
+        candidate_runs=[candidate],
+        policy=make_policy(),
+        apply=False,
+        promotion_evidence_contract={
+            "contract_name": "promotion_evidence_contract",
+            "contract_version": "v1",
+            "contract_path": "config/promotion_evidence_contract.yaml",
+            "status": "learning_contract_not_production_registry",
+        },
+    )
+
+    assert report["selection_status"] == "selected"
+    assert report["selected_candidate"]["run_id"] == "candidate-a"

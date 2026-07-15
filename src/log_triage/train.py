@@ -454,6 +454,18 @@ def log_mlflow_outputs(artifact: dict, artifact_dir: Path) -> None:
         if value is not None:
             mlflow.log_param(key, value)
 
+    evidence_params = {
+        "model_family": variant.get("model_family"),
+        "variant_name": variant.get("variant_name"),
+        "feature_pipeline_sha256": feature_pipeline.get("feature_pipeline_sha256"),
+        "experiment_config_sha256": experiment_config.get(
+            "experiment_config_sha256"
+        ),
+    }
+    for key, value in evidence_params.items():
+        if value is not None:
+            mlflow.log_param(key, value)
+
     for key, value in artifact["metrics"].items():
         if isinstance(value, (int, float)):
             mlflow.log_metric(key, float(value))
