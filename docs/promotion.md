@@ -96,3 +96,28 @@ This is an offline candidate-selection gate.
 
 It does not mean the model is production ready.
 Deployment, service latency, monitoring, rollback, and live validation are separate stages.
+
+## Promotion status report
+
+Build a status visibility report:
+
+```bash
+.venv/bin/python scripts/build_promotion_status_report.py \
+  --experiment-name log-triage-decision-engine \
+  --promotion-evidence-contract-path config/promotion_evidence_contract.yaml
+```
+
+Outputs:
+
+* `evidence/promotion_status/promotion_status_report.json`
+* `evidence/promotion_status/promotion_status_report.md`
+
+The report includes:
+
+* counts by `candidate_status`
+* MLflow filter examples
+* selected/current candidate visibility
+* promotion evidence validation status
+* policy checks such as single current candidate
+
+This report does not mutate MLflow.
