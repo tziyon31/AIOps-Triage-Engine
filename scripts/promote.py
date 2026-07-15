@@ -31,6 +31,14 @@ from src.log_triage.candidate_selection import (
 
 DEFAULT_OUTPUT_DIR = "evidence/candidate_selection"
 
+DEFAULT_CURRENT_CANDIDATE_STATE_PATH = (
+    "evidence/candidate_selection/current_candidate.json"
+)
+
+DEFAULT_CANDIDATE_SELECTION_EVENTS_PATH = (
+    "evidence/candidate_selection/candidate_selection_events.jsonl"
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -61,6 +69,16 @@ def parse_args() -> argparse.Namespace:
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR,
         help="Directory for candidate selection report outputs.",
+    )
+    parser.add_argument(
+        "--current-candidate-state-path",
+        default=DEFAULT_CURRENT_CANDIDATE_STATE_PATH,
+        help="Path to write the current candidate state file when --apply is used.",
+    )
+    parser.add_argument(
+        "--candidate-selection-events-path",
+        default=DEFAULT_CANDIDATE_SELECTION_EVENTS_PATH,
+        help="Path to append candidate lifecycle events when --apply is used.",
     )
     parser.add_argument(
         "--apply",
@@ -279,6 +297,114 @@ def select_candidate(
     return sorted(eligible_candidates, key=candidate_sort_key)[0]
 
 
+def find_current_candidate_run_ids(*, experiment_id: str) -> list[str]:
+    runs_df = mlflow.search_runs(
+        experiment_ids=[experiment_id],
+        filter_string="tags.current_candidate = 'true'",
+        output_format="pandas",
+    )
+
+    if runs_df.empty or "run_id" not in runs_df.columns:
+        return []
+
+    return [
+        str(run_id)
+        for run_id in runs_df["run_id"].tolist()
+    ]
+
+
+def build_candidate_lifecycle_plan(
+    *,
+    selected_run_id: str | None,
+    current_candidate_run_ids: list[str],
+) -> dict[str, Any]:
+    if selected_run_id is None:
+        return {
+            "new_current_candidate_run_id": None,
+            "previous_current_candidate_run_ids": current_candidate_run_ids,
+            "superseded_run_ids": [],
+            "already_current": False,
+        }
+
+    superseded_run_ids = [
+        run_id
+        for run_id in current_candidate_run_ids
+        if run_id != selected_run_id
+    ]
+
+    return {
+        "new_current_candidate_run_id": selected_run_id,
+        "previous_current_candidate_run_ids": current_candidate_run_ids,
+        "superseded_run_ids": superseded_run_ids,
+        "already_current": (
+            selected_run_id in current_candidate_run_ids
+            and not superseded_run_ids
+        ),
+    }
+
+
+def build_current_candidate_state(
+    *,
+    report: dict[str, Any],
+    lifecycle_plan: dict[str, Any],
+) -> dict[str, Any]:
+    selected = report["selected_candidate"]
+
+    return {
+        "updated_at": report["generated_at"],
+        "current_candidate_run_id": None if selected is None else selected["run_id"],
+        "current_candidate_variant_name": None
+        if selected is None
+        else selected["variant_name"],
+        "previous_current_candidate_run_ids": lifecycle_plan[
+            "previous_current_candidate_run_ids"
+        ],
+        "superseded_run_ids": lifecycle_plan["superseded_run_ids"],
+        "baseline_run_id": report["baseline_run"]["run_id"],
+        "comparison_group_id": report["comparison_group_id"],
+        "experiment_name": report["experiment_name"],
+        "candidate_policy_name": report["candidate_selection_policy"]["policy_name"],
+        "candidate_policy_version": report["candidate_selection_policy"][
+            "policy_version"
+        ],
+        "selection_status": report["selection_status"],
+        "selection_mode": report["mode"],
+        "selection_report_path": (
+            "evidence/candidate_selection/candidate_selection_report.json"
+        ),
+    }
+
+
+def write_current_candidate_state(
+    *,
+    state: dict[str, Any],
+    state_path: str,
+) -> Path:
+    path = Path(state_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    path.write_text(
+        json.dumps(state, indent=2, default=str),
+        encoding="utf-8",
+    )
+
+    return path
+
+
+def append_candidate_selection_event(
+    *,
+    event: dict[str, Any],
+    events_path: str,
+) -> Path:
+    path = Path(events_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(event, default=str) + "\n")
+
+    return path
+
+
 def build_candidate_selection_report(
     *,
     experiment_name: str,
@@ -289,6 +415,7 @@ def build_candidate_selection_report(
     candidate_runs: list[dict[str, Any]],
     policy: dict[str, Any],
     apply: bool,
+    current_candidate_run_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     candidate_evaluations = evaluate_candidates(
         candidate_runs=candidate_runs,
@@ -304,6 +431,11 @@ def build_candidate_selection_report(
         "selected"
         if selected is not None
         else "no_candidate_selected"
+    )
+
+    lifecycle_plan = build_candidate_lifecycle_plan(
+        selected_run_id=None if selected is None else selected["run"]["run_id"],
+        current_candidate_run_ids=current_candidate_run_ids or [],
     )
 
     return {
@@ -343,6 +475,7 @@ def build_candidate_selection_report(
             }
             for candidate in candidate_evaluations
         ],
+        "candidate_lifecycle": lifecycle_plan,
     }
 
 
@@ -386,6 +519,20 @@ def build_markdown_report(report: dict[str, Any]) -> str:
                 f"- p95 latency: `{selected['metrics']['offline_decision_latency_p95_ms']}`",
             ]
         )
+
+    lifecycle = report.get("candidate_lifecycle", {})
+
+    lines.extend(
+        [
+            "",
+            "## Candidate Lifecycle",
+            "",
+            f"- New current candidate: `{lifecycle.get('new_current_candidate_run_id')}`",
+            f"- Previous current candidates: `{lifecycle.get('previous_current_candidate_run_ids', [])}`",
+            f"- Superseded candidates on apply: `{lifecycle.get('superseded_run_ids', [])}`",
+            f"- Already current: `{lifecycle.get('already_current')}`",
+        ]
+    )
 
     lines.extend(
         [
@@ -434,18 +581,32 @@ def apply_mlflow_candidate_tags(
     report: dict[str, Any],
 ) -> None:
     client = MlflowClient()
-    run_id = selected_candidate["run_id"]
+    selected_run_id = selected_candidate["run_id"]
     policy = report["candidate_selection_policy"]
+    lifecycle = report["candidate_lifecycle"]
+    generated_at = report["generated_at"]
 
-    client.set_tag(run_id, "candidate", "true")
-    client.set_tag(run_id, "candidate_status", "selected")
-    client.set_tag(run_id, "promotion_reason", selected_candidate["reason"])
-    client.set_tag(run_id, "candidate_policy_name", policy["policy_name"])
-    client.set_tag(run_id, "candidate_policy_version", policy["policy_version"])
-    client.set_tag(run_id, "candidate_policy_status", policy["status"])
-    client.set_tag(run_id, "baseline_run_id", report["baseline_run"]["run_id"])
-    client.set_tag(run_id, "comparison_group_id", report["comparison_group_id"])
-    client.set_tag(run_id, "candidate_selected_at", report["generated_at"])
+    for old_run_id in lifecycle["superseded_run_ids"]:
+        client.set_tag(old_run_id, "current_candidate", "false")
+        client.set_tag(old_run_id, "candidate_status", "superseded")
+        client.set_tag(old_run_id, "superseded_by_run_id", selected_run_id)
+        client.set_tag(old_run_id, "superseded_at", generated_at)
+
+    client.set_tag(selected_run_id, "candidate", "true")
+    client.set_tag(selected_run_id, "current_candidate", "true")
+    client.set_tag(selected_run_id, "candidate_status", "selected")
+    client.set_tag(selected_run_id, "promotion_reason", selected_candidate["reason"])
+    client.set_tag(selected_run_id, "candidate_policy_name", policy["policy_name"])
+    client.set_tag(selected_run_id, "candidate_policy_version", policy["policy_version"])
+    client.set_tag(selected_run_id, "candidate_policy_status", policy["status"])
+    client.set_tag(selected_run_id, "baseline_run_id", report["baseline_run"]["run_id"])
+    client.set_tag(selected_run_id, "comparison_group_id", report["comparison_group_id"])
+    client.set_tag(selected_run_id, "candidate_selected_at", generated_at)
+    client.set_tag(
+        selected_run_id,
+        "previous_current_candidate_run_ids",
+        ",".join(lifecycle["previous_current_candidate_run_ids"]),
+    )
 
 
 def write_report(
@@ -498,6 +659,10 @@ def main() -> None:
 
     baseline_run = load_baseline_run(args.baseline_run_id)
 
+    current_candidate_run_ids = find_current_candidate_run_ids(
+        experiment_id=experiment_id
+    )
+
     report = build_candidate_selection_report(
         experiment_name=args.experiment_name,
         comparison_group_id=args.comparison_group_id,
@@ -507,6 +672,7 @@ def main() -> None:
         candidate_runs=candidate_runs,
         policy=policy,
         apply=args.apply,
+        current_candidate_run_ids=current_candidate_run_ids,
     )
 
     json_path, md_path = write_report(
@@ -535,6 +701,35 @@ def main() -> None:
             "MLflow tags applied to selected candidate: "
             f"{report['selected_candidate']['run_id']}"
         )
+
+        state = build_current_candidate_state(
+            report=report,
+            lifecycle_plan=report["candidate_lifecycle"],
+        )
+
+        state_path = write_current_candidate_state(
+            state=state,
+            state_path=args.current_candidate_state_path,
+        )
+
+        event_path = append_candidate_selection_event(
+            event={
+                "event_type": "candidate_selected",
+                "generated_at": report["generated_at"],
+                "selected_candidate": report["selected_candidate"],
+                "candidate_lifecycle": report["candidate_lifecycle"],
+                "baseline_run_id": report["baseline_run"]["run_id"],
+                "comparison_group_id": report["comparison_group_id"],
+                "policy_name": report["candidate_selection_policy"]["policy_name"],
+                "policy_version": report["candidate_selection_policy"][
+                    "policy_version"
+                ],
+            },
+            events_path=args.candidate_selection_events_path,
+        )
+
+        print(f"Current candidate state written to: {state_path}")
+        print(f"Candidate selection event appended to: {event_path}")
     else:
         print("Dry-run only. Re-run with --apply to tag MLflow.")
 
