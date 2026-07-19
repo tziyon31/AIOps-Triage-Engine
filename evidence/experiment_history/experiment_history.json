@@ -1,0 +1,791 @@
+{
+  "experiment_name": "log-triage-decision-engine",
+  "total_comparison_groups": 5,
+  "valid_comparison_groups": 5,
+  "invalid_comparison_groups": 0,
+  "ready_for_candidate_selection_groups": 5,
+  "overall_next_step": {
+    "recommendation_type": "quality_latency_tradeoff_experiment",
+    "recommended_next_experiment": "latency_or_cost_tradeoff_experiment",
+    "reason": "The best quality variant is not the fastest variant. The next experiment should clarify whether the quality gain is worth the latency/cost tradeoff.",
+    "evidence": [
+      "best_f1_variant=manual_tfidf_logistic_regression",
+      "best_latency_variant=manual_tfidf_sgd_log_loss"
+    ],
+    "source_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+    "candidate_selection_command": ".venv/bin/python scripts/promote.py \\\n  --experiment-name log-triage-decision-engine \\\n  --comparison-group-id 1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724 \\\n  --baseline-run-id <BASELINE_RUN_ID> \\\n  --candidate-policy-path config/candidate_selection.yaml"
+  },
+  "comparison_groups": [
+    {
+      "comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "status": "valid",
+      "ready_for_candidate_selection": true,
+      "run_count": 2,
+      "raw_run_count": 7,
+      "comparison_type": "model_family",
+      "changed_variable": "model_family",
+      "experiment_config_paths": [
+        "unknown"
+      ],
+      "experiment_config_sha256_values": [
+        "unknown"
+      ],
+      "variants": [
+        "manual_tfidf_logistic_regression",
+        "manual_tfidf_sgd_log_loss"
+      ],
+      "model_families": [
+        "LogisticRegression",
+        "SGDClassifier"
+      ],
+      "feature_pipeline_names": [
+        "manual_features_plus_tfidf"
+      ],
+      "controlled_variable_status": "passed",
+      "comparison_contract": {
+        "status": "valid",
+        "comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+        "comparison_type": "model_family",
+        "changed_variable": "model_family",
+        "variant_types": [
+          "model_family"
+        ],
+        "run_count": 2,
+        "minimum_run_count_met": true,
+        "controlled_variable_status": "passed",
+        "checks": {
+          "single_comparison_group_id": true,
+          "single_comparison_type": true,
+          "single_changed_variable": true,
+          "controlled_variables_passed": true,
+          "at_least_two_runs": true
+        }
+      },
+      "controlled_variable_validation": {
+        "status": "passed",
+        "controlled_variables": [
+          "raw_data",
+          "train_split",
+          "test_split",
+          "feature_pipeline",
+          "policy",
+          "evaluation_code"
+        ],
+        "checks": [
+          {
+            "controlled_variable": "raw_data",
+            "tag": "training_data_sha256",
+            "status": "passed",
+            "values": [
+              "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414"
+            ]
+          },
+          {
+            "controlled_variable": "train_split",
+            "tag": "train_split_sha256",
+            "status": "passed",
+            "values": [
+              "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da"
+            ]
+          },
+          {
+            "controlled_variable": "test_split",
+            "tag": "test_split_sha256",
+            "status": "passed",
+            "values": [
+              "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d"
+            ]
+          },
+          {
+            "controlled_variable": "feature_pipeline",
+            "tag": "feature_pipeline_sha256",
+            "status": "passed",
+            "values": [
+              "03fbf59aecd9f1ab3a7116a9235c9f75c5d899382447e0d12f4ab8846164e30d"
+            ]
+          },
+          {
+            "controlled_variable": "policy",
+            "tag": "policy_sha256",
+            "status": "passed",
+            "values": [
+              "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a"
+            ]
+          },
+          {
+            "controlled_variable": "evaluation_code",
+            "tag": "evaluation_code_sha256",
+            "status": "passed",
+            "values": [
+              "142643a3543e73b0569ddaa5f5deac77c499e15b39a7f1fca7cd46b75c3f6f46"
+            ]
+          }
+        ]
+      },
+      "best_runs": {
+        "best_f1_macro": {
+          "run_id": "0bf8e629ec634882b245035bf84a57d6",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "f1_macro",
+          "metric_value": 1.0
+        },
+        "best_combined_accuracy": {
+          "run_id": "0bf8e629ec634882b245035bf84a57d6",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "combined_accuracy",
+          "metric_value": 1.0
+        },
+        "best_low_confidence_rate": {
+          "run_id": "0bf8e629ec634882b245035bf84a57d6",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "low_confidence_rate",
+          "metric_value": 0.1
+        },
+        "best_approval_required_rate": {
+          "run_id": "0bf8e629ec634882b245035bf84a57d6",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "approval_required_rate",
+          "metric_value": 0.5
+        },
+        "best_latency_p95": {
+          "run_id": "bde8c1331b6a4f6bab0a5bdda39b3a6a",
+          "variant_name": "manual_tfidf_sgd_log_loss",
+          "metric_name": "latency_p95",
+          "metric_value": null
+        }
+      },
+      "tradeoff_summary": [
+        "There is a quality/latency tradeoff: the best f1_macro variant is not the fastest p95 offline latency variant.",
+        "The same variant currently wins both f1_macro and low_confidence_rate."
+      ],
+      "blocked_reason": null,
+      "next_experiment_recommendation": {
+        "recommendation_type": "quality_latency_tradeoff_experiment",
+        "recommended_next_experiment": "latency_or_cost_tradeoff_experiment",
+        "reason": "The best quality variant is not the fastest variant. The next experiment should clarify whether the quality gain is worth the latency/cost tradeoff.",
+        "evidence": [
+          "best_f1_variant=manual_tfidf_logistic_regression",
+          "best_latency_variant=manual_tfidf_sgd_log_loss"
+        ]
+      },
+      "candidate_selection_command": ".venv/bin/python scripts/promote.py \\\n  --experiment-name log-triage-decision-engine \\\n  --comparison-group-id 1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724 \\\n  --baseline-run-id <BASELINE_RUN_ID> \\\n  --candidate-policy-path config/candidate_selection.yaml"
+    },
+    {
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-095546-bf3685ca",
+      "status": "valid",
+      "ready_for_candidate_selection": true,
+      "run_count": 2,
+      "raw_run_count": 2,
+      "comparison_type": "model_family",
+      "changed_variable": "model_family",
+      "experiment_config_paths": [
+        "config/experiments/model_family.yaml"
+      ],
+      "experiment_config_sha256_values": [
+        "0c4c0f112a9486e78f19dbfca4a7859dd6daf527aba9432ec541a3a8aeaf254c"
+      ],
+      "variants": [
+        "manual_tfidf_logistic_regression",
+        "manual_tfidf_sgd_log_loss"
+      ],
+      "model_families": [
+        "LogisticRegression",
+        "SGDClassifier"
+      ],
+      "feature_pipeline_names": [
+        "manual_features_plus_tfidf"
+      ],
+      "controlled_variable_status": "passed",
+      "comparison_contract": {
+        "status": "valid",
+        "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-095546-bf3685ca",
+        "comparison_type": "model_family",
+        "changed_variable": "model_family",
+        "variant_types": [
+          "model_family"
+        ],
+        "run_count": 2,
+        "minimum_run_count_met": true,
+        "controlled_variable_status": "passed",
+        "checks": {
+          "single_comparison_group_id": true,
+          "single_comparison_type": true,
+          "single_changed_variable": true,
+          "controlled_variables_passed": true,
+          "at_least_two_runs": true
+        }
+      },
+      "controlled_variable_validation": {
+        "status": "passed",
+        "controlled_variables": [
+          "raw_data",
+          "train_split",
+          "test_split",
+          "feature_pipeline",
+          "policy",
+          "evaluation_code"
+        ],
+        "checks": [
+          {
+            "controlled_variable": "raw_data",
+            "tag": "training_data_sha256",
+            "status": "passed",
+            "values": [
+              "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414"
+            ]
+          },
+          {
+            "controlled_variable": "train_split",
+            "tag": "train_split_sha256",
+            "status": "passed",
+            "values": [
+              "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da"
+            ]
+          },
+          {
+            "controlled_variable": "test_split",
+            "tag": "test_split_sha256",
+            "status": "passed",
+            "values": [
+              "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d"
+            ]
+          },
+          {
+            "controlled_variable": "feature_pipeline",
+            "tag": "feature_pipeline_sha256",
+            "status": "passed",
+            "values": [
+              "14476c600a0842f73107ba560488237ae3a09dd8e88e97727196f85ad2c9153a"
+            ]
+          },
+          {
+            "controlled_variable": "policy",
+            "tag": "policy_sha256",
+            "status": "passed",
+            "values": [
+              "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a"
+            ]
+          },
+          {
+            "controlled_variable": "evaluation_code",
+            "tag": "evaluation_code_sha256",
+            "status": "passed",
+            "values": [
+              "a075b3a31a6862319a434d93bc680fb6681b22b1a7a2147a821d5c71eac2a63a"
+            ]
+          }
+        ]
+      },
+      "best_runs": {
+        "best_f1_macro": {
+          "run_id": "eb248f38e0c645e7b2aa07181dcd3a89",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "f1_macro",
+          "metric_value": 1.0
+        },
+        "best_combined_accuracy": {
+          "run_id": "eb248f38e0c645e7b2aa07181dcd3a89",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "combined_accuracy",
+          "metric_value": 1.0
+        },
+        "best_low_confidence_rate": {
+          "run_id": "eb248f38e0c645e7b2aa07181dcd3a89",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "low_confidence_rate",
+          "metric_value": 0.1
+        },
+        "best_approval_required_rate": {
+          "run_id": "eb248f38e0c645e7b2aa07181dcd3a89",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "approval_required_rate",
+          "metric_value": 0.5
+        },
+        "best_latency_p95": {
+          "run_id": "9913c2aaeb7e41e5b25e832cd650340d",
+          "variant_name": "manual_tfidf_sgd_log_loss",
+          "metric_name": "latency_p95",
+          "metric_value": null
+        }
+      },
+      "tradeoff_summary": [
+        "There is a quality/latency tradeoff: the best f1_macro variant is not the fastest p95 offline latency variant.",
+        "The same variant currently wins both f1_macro and low_confidence_rate."
+      ],
+      "blocked_reason": null,
+      "next_experiment_recommendation": {
+        "recommendation_type": "quality_latency_tradeoff_experiment",
+        "recommended_next_experiment": "latency_or_cost_tradeoff_experiment",
+        "reason": "The best quality variant is not the fastest variant. The next experiment should clarify whether the quality gain is worth the latency/cost tradeoff.",
+        "evidence": [
+          "best_f1_variant=manual_tfidf_logistic_regression",
+          "best_latency_variant=manual_tfidf_sgd_log_loss"
+        ]
+      },
+      "candidate_selection_command": ".venv/bin/python scripts/promote.py \\\n  --experiment-name log-triage-decision-engine \\\n  --comparison-group-id model_family_baseline-0c4c0f11-20260714-095546-bf3685ca \\\n  --baseline-run-id <BASELINE_RUN_ID> \\\n  --candidate-policy-path config/candidate_selection.yaml"
+    },
+    {
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-095856-a98bebd5",
+      "status": "valid",
+      "ready_for_candidate_selection": true,
+      "run_count": 2,
+      "raw_run_count": 2,
+      "comparison_type": "model_family",
+      "changed_variable": "model_family",
+      "experiment_config_paths": [
+        "config/experiments/model_family.yaml"
+      ],
+      "experiment_config_sha256_values": [
+        "0c4c0f112a9486e78f19dbfca4a7859dd6daf527aba9432ec541a3a8aeaf254c"
+      ],
+      "variants": [
+        "manual_tfidf_logistic_regression",
+        "manual_tfidf_sgd_log_loss"
+      ],
+      "model_families": [
+        "LogisticRegression",
+        "SGDClassifier"
+      ],
+      "feature_pipeline_names": [
+        "manual_features_plus_tfidf"
+      ],
+      "controlled_variable_status": "passed",
+      "comparison_contract": {
+        "status": "valid",
+        "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-095856-a98bebd5",
+        "comparison_type": "model_family",
+        "changed_variable": "model_family",
+        "variant_types": [
+          "model_family"
+        ],
+        "run_count": 2,
+        "minimum_run_count_met": true,
+        "controlled_variable_status": "passed",
+        "checks": {
+          "single_comparison_group_id": true,
+          "single_comparison_type": true,
+          "single_changed_variable": true,
+          "controlled_variables_passed": true,
+          "at_least_two_runs": true
+        }
+      },
+      "controlled_variable_validation": {
+        "status": "passed",
+        "controlled_variables": [
+          "raw_data",
+          "train_split",
+          "test_split",
+          "feature_pipeline",
+          "policy",
+          "evaluation_code"
+        ],
+        "checks": [
+          {
+            "controlled_variable": "raw_data",
+            "tag": "training_data_sha256",
+            "status": "passed",
+            "values": [
+              "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414"
+            ]
+          },
+          {
+            "controlled_variable": "train_split",
+            "tag": "train_split_sha256",
+            "status": "passed",
+            "values": [
+              "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da"
+            ]
+          },
+          {
+            "controlled_variable": "test_split",
+            "tag": "test_split_sha256",
+            "status": "passed",
+            "values": [
+              "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d"
+            ]
+          },
+          {
+            "controlled_variable": "feature_pipeline",
+            "tag": "feature_pipeline_sha256",
+            "status": "passed",
+            "values": [
+              "14476c600a0842f73107ba560488237ae3a09dd8e88e97727196f85ad2c9153a"
+            ]
+          },
+          {
+            "controlled_variable": "policy",
+            "tag": "policy_sha256",
+            "status": "passed",
+            "values": [
+              "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a"
+            ]
+          },
+          {
+            "controlled_variable": "evaluation_code",
+            "tag": "evaluation_code_sha256",
+            "status": "passed",
+            "values": [
+              "a075b3a31a6862319a434d93bc680fb6681b22b1a7a2147a821d5c71eac2a63a"
+            ]
+          }
+        ]
+      },
+      "best_runs": {
+        "best_f1_macro": {
+          "run_id": "6eb3fb2da2fc45ea8470b861b9408562",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "f1_macro",
+          "metric_value": 1.0
+        },
+        "best_combined_accuracy": {
+          "run_id": "6eb3fb2da2fc45ea8470b861b9408562",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "combined_accuracy",
+          "metric_value": 1.0
+        },
+        "best_low_confidence_rate": {
+          "run_id": "6eb3fb2da2fc45ea8470b861b9408562",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "low_confidence_rate",
+          "metric_value": 0.1
+        },
+        "best_approval_required_rate": {
+          "run_id": "6eb3fb2da2fc45ea8470b861b9408562",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "approval_required_rate",
+          "metric_value": 0.5
+        },
+        "best_latency_p95": {
+          "run_id": "4e7e9142a00c4362b22a8a03fad5a924",
+          "variant_name": "manual_tfidf_sgd_log_loss",
+          "metric_name": "latency_p95",
+          "metric_value": null
+        }
+      },
+      "tradeoff_summary": [
+        "There is a quality/latency tradeoff: the best f1_macro variant is not the fastest p95 offline latency variant.",
+        "The same variant currently wins both f1_macro and low_confidence_rate."
+      ],
+      "blocked_reason": null,
+      "next_experiment_recommendation": {
+        "recommendation_type": "quality_latency_tradeoff_experiment",
+        "recommended_next_experiment": "latency_or_cost_tradeoff_experiment",
+        "reason": "The best quality variant is not the fastest variant. The next experiment should clarify whether the quality gain is worth the latency/cost tradeoff.",
+        "evidence": [
+          "best_f1_variant=manual_tfidf_logistic_regression",
+          "best_latency_variant=manual_tfidf_sgd_log_loss"
+        ]
+      },
+      "candidate_selection_command": ".venv/bin/python scripts/promote.py \\\n  --experiment-name log-triage-decision-engine \\\n  --comparison-group-id model_family_baseline-0c4c0f11-20260714-095856-a98bebd5 \\\n  --baseline-run-id <BASELINE_RUN_ID> \\\n  --candidate-policy-path config/candidate_selection.yaml"
+    },
+    {
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-113233-30392754",
+      "status": "valid",
+      "ready_for_candidate_selection": true,
+      "run_count": 2,
+      "raw_run_count": 2,
+      "comparison_type": "model_family",
+      "changed_variable": "model_family",
+      "experiment_config_paths": [
+        "config/experiments/model_family.yaml"
+      ],
+      "experiment_config_sha256_values": [
+        "0c4c0f112a9486e78f19dbfca4a7859dd6daf527aba9432ec541a3a8aeaf254c"
+      ],
+      "variants": [
+        "manual_tfidf_logistic_regression",
+        "manual_tfidf_sgd_log_loss"
+      ],
+      "model_families": [
+        "LogisticRegression",
+        "SGDClassifier"
+      ],
+      "feature_pipeline_names": [
+        "manual_features_plus_tfidf"
+      ],
+      "controlled_variable_status": "passed",
+      "comparison_contract": {
+        "status": "valid",
+        "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-113233-30392754",
+        "comparison_type": "model_family",
+        "changed_variable": "model_family",
+        "variant_types": [
+          "model_family"
+        ],
+        "run_count": 2,
+        "minimum_run_count_met": true,
+        "controlled_variable_status": "passed",
+        "checks": {
+          "single_comparison_group_id": true,
+          "single_comparison_type": true,
+          "single_changed_variable": true,
+          "controlled_variables_passed": true,
+          "at_least_two_runs": true
+        }
+      },
+      "controlled_variable_validation": {
+        "status": "passed",
+        "controlled_variables": [
+          "raw_data",
+          "train_split",
+          "test_split",
+          "feature_pipeline",
+          "policy",
+          "evaluation_code"
+        ],
+        "checks": [
+          {
+            "controlled_variable": "raw_data",
+            "tag": "training_data_sha256",
+            "status": "passed",
+            "values": [
+              "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414"
+            ]
+          },
+          {
+            "controlled_variable": "train_split",
+            "tag": "train_split_sha256",
+            "status": "passed",
+            "values": [
+              "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da"
+            ]
+          },
+          {
+            "controlled_variable": "test_split",
+            "tag": "test_split_sha256",
+            "status": "passed",
+            "values": [
+              "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d"
+            ]
+          },
+          {
+            "controlled_variable": "feature_pipeline",
+            "tag": "feature_pipeline_sha256",
+            "status": "passed",
+            "values": [
+              "14476c600a0842f73107ba560488237ae3a09dd8e88e97727196f85ad2c9153a"
+            ]
+          },
+          {
+            "controlled_variable": "policy",
+            "tag": "policy_sha256",
+            "status": "passed",
+            "values": [
+              "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a"
+            ]
+          },
+          {
+            "controlled_variable": "evaluation_code",
+            "tag": "evaluation_code_sha256",
+            "status": "passed",
+            "values": [
+              "323a2bb338feb48f8f3ad083ee759676abb743260d3c8e44a8e78ce4365ef136"
+            ]
+          }
+        ]
+      },
+      "best_runs": {
+        "best_f1_macro": {
+          "run_id": "fbf5b49b832a48f1ad057e1601453630",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "f1_macro",
+          "metric_value": 1.0
+        },
+        "best_combined_accuracy": {
+          "run_id": "fbf5b49b832a48f1ad057e1601453630",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "combined_accuracy",
+          "metric_value": 1.0
+        },
+        "best_low_confidence_rate": {
+          "run_id": "fbf5b49b832a48f1ad057e1601453630",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "low_confidence_rate",
+          "metric_value": 0.1
+        },
+        "best_approval_required_rate": {
+          "run_id": "fbf5b49b832a48f1ad057e1601453630",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "approval_required_rate",
+          "metric_value": 0.5
+        },
+        "best_latency_p95": {
+          "run_id": "b771ef74c0f44d22bc5317d0b862bc06",
+          "variant_name": "manual_tfidf_sgd_log_loss",
+          "metric_name": "latency_p95",
+          "metric_value": null
+        }
+      },
+      "tradeoff_summary": [
+        "There is a quality/latency tradeoff: the best f1_macro variant is not the fastest p95 offline latency variant.",
+        "The same variant currently wins both f1_macro and low_confidence_rate."
+      ],
+      "blocked_reason": null,
+      "next_experiment_recommendation": {
+        "recommendation_type": "quality_latency_tradeoff_experiment",
+        "recommended_next_experiment": "latency_or_cost_tradeoff_experiment",
+        "reason": "The best quality variant is not the fastest variant. The next experiment should clarify whether the quality gain is worth the latency/cost tradeoff.",
+        "evidence": [
+          "best_f1_variant=manual_tfidf_logistic_regression",
+          "best_latency_variant=manual_tfidf_sgd_log_loss"
+        ]
+      },
+      "candidate_selection_command": ".venv/bin/python scripts/promote.py \\\n  --experiment-name log-triage-decision-engine \\\n  --comparison-group-id model_family_baseline-0c4c0f11-20260714-113233-30392754 \\\n  --baseline-run-id <BASELINE_RUN_ID> \\\n  --candidate-policy-path config/candidate_selection.yaml"
+    },
+    {
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-080324-49930cac",
+      "status": "valid",
+      "ready_for_candidate_selection": true,
+      "run_count": 2,
+      "raw_run_count": 2,
+      "comparison_type": "model_family",
+      "changed_variable": "model_family",
+      "experiment_config_paths": [
+        "config/experiments/model_family.yaml"
+      ],
+      "experiment_config_sha256_values": [
+        "0c4c0f112a9486e78f19dbfca4a7859dd6daf527aba9432ec541a3a8aeaf254c"
+      ],
+      "variants": [
+        "manual_tfidf_logistic_regression",
+        "manual_tfidf_sgd_log_loss"
+      ],
+      "model_families": [
+        "LogisticRegression",
+        "SGDClassifier"
+      ],
+      "feature_pipeline_names": [
+        "manual_features_plus_tfidf"
+      ],
+      "controlled_variable_status": "passed",
+      "comparison_contract": {
+        "status": "valid",
+        "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-080324-49930cac",
+        "comparison_type": "model_family",
+        "changed_variable": "model_family",
+        "variant_types": [
+          "model_family"
+        ],
+        "run_count": 2,
+        "minimum_run_count_met": true,
+        "controlled_variable_status": "passed",
+        "checks": {
+          "single_comparison_group_id": true,
+          "single_comparison_type": true,
+          "single_changed_variable": true,
+          "controlled_variables_passed": true,
+          "at_least_two_runs": true
+        }
+      },
+      "controlled_variable_validation": {
+        "status": "passed",
+        "controlled_variables": [
+          "raw_data",
+          "train_split",
+          "test_split",
+          "feature_pipeline",
+          "policy",
+          "evaluation_code"
+        ],
+        "checks": [
+          {
+            "controlled_variable": "raw_data",
+            "tag": "training_data_sha256",
+            "status": "passed",
+            "values": [
+              "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414"
+            ]
+          },
+          {
+            "controlled_variable": "train_split",
+            "tag": "train_split_sha256",
+            "status": "passed",
+            "values": [
+              "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da"
+            ]
+          },
+          {
+            "controlled_variable": "test_split",
+            "tag": "test_split_sha256",
+            "status": "passed",
+            "values": [
+              "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d"
+            ]
+          },
+          {
+            "controlled_variable": "feature_pipeline",
+            "tag": "feature_pipeline_sha256",
+            "status": "passed",
+            "values": [
+              "14476c600a0842f73107ba560488237ae3a09dd8e88e97727196f85ad2c9153a"
+            ]
+          },
+          {
+            "controlled_variable": "policy",
+            "tag": "policy_sha256",
+            "status": "passed",
+            "values": [
+              "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a"
+            ]
+          },
+          {
+            "controlled_variable": "evaluation_code",
+            "tag": "evaluation_code_sha256",
+            "status": "passed",
+            "values": [
+              "323a2bb338feb48f8f3ad083ee759676abb743260d3c8e44a8e78ce4365ef136"
+            ]
+          }
+        ]
+      },
+      "best_runs": {
+        "best_f1_macro": {
+          "run_id": "40fa1b4f96544a76a86ac13d82986c33",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "f1_macro",
+          "metric_value": 1.0
+        },
+        "best_combined_accuracy": {
+          "run_id": "40fa1b4f96544a76a86ac13d82986c33",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "combined_accuracy",
+          "metric_value": 1.0
+        },
+        "best_low_confidence_rate": {
+          "run_id": "40fa1b4f96544a76a86ac13d82986c33",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "low_confidence_rate",
+          "metric_value": 0.1
+        },
+        "best_approval_required_rate": {
+          "run_id": "40fa1b4f96544a76a86ac13d82986c33",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "approval_required_rate",
+          "metric_value": 0.5
+        },
+        "best_latency_p95": {
+          "run_id": "40fa1b4f96544a76a86ac13d82986c33",
+          "variant_name": "manual_tfidf_logistic_regression",
+          "metric_name": "latency_p95",
+          "metric_value": null
+        }
+      },
+      "tradeoff_summary": [
+        "The same variant currently wins both f1_macro and p95 offline latency.",
+        "The same variant currently wins both f1_macro and low_confidence_rate."
+      ],
+      "blocked_reason": null,
+      "next_experiment_recommendation": {
+        "recommendation_type": "candidate_selection",
+        "recommended_next_experiment": "candidate_selection_policy",
+        "reason": "The comparison is valid and no blocking quality/confidence issue was detected. The next step is candidate selection, not another experiment.",
+        "evidence": [
+          "best_f1_variant=manual_tfidf_logistic_regression",
+          "comparison_type=model_family",
+          "changed_variable=model_family"
+        ]
+      },
+      "candidate_selection_command": ".venv/bin/python scripts/promote.py \\\n  --experiment-name log-triage-decision-engine \\\n  --comparison-group-id model_family_baseline-0c4c0f11-20260715-080324-49930cac \\\n  --baseline-run-id <BASELINE_RUN_ID> \\\n  --candidate-policy-path config/candidate_selection.yaml"
+    }
+  ]
+}

@@ -1,0 +1,305 @@
+{
+  "generated_at": "2026-07-15T11:38:35.424811+00:00",
+  "mode": "apply",
+  "experiment_name": "log-triage-decision-engine",
+  "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-113809-b7752fad",
+  "selection_status": "selected",
+  "comparison_contract": {
+    "status": "valid",
+    "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-113809-b7752fad",
+    "comparison_type": "model_family",
+    "changed_variable": "model_family",
+    "variant_types": [
+      "model_family"
+    ],
+    "run_count": 2,
+    "minimum_run_count_met": true,
+    "controlled_variable_status": "passed",
+    "checks": {
+      "single_comparison_group_id": true,
+      "single_comparison_type": true,
+      "single_changed_variable": true,
+      "controlled_variables_passed": true,
+      "at_least_two_runs": true
+    }
+  },
+  "controlled_variable_validation": {
+    "status": "passed",
+    "controlled_variables": [
+      "raw_data",
+      "train_split",
+      "test_split",
+      "feature_pipeline",
+      "policy",
+      "evaluation_code"
+    ],
+    "checks": [
+      {
+        "controlled_variable": "raw_data",
+        "tag": "training_data_sha256",
+        "status": "passed",
+        "values": [
+          "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414"
+        ]
+      },
+      {
+        "controlled_variable": "train_split",
+        "tag": "train_split_sha256",
+        "status": "passed",
+        "values": [
+          "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da"
+        ]
+      },
+      {
+        "controlled_variable": "test_split",
+        "tag": "test_split_sha256",
+        "status": "passed",
+        "values": [
+          "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d"
+        ]
+      },
+      {
+        "controlled_variable": "feature_pipeline",
+        "tag": "feature_pipeline_sha256",
+        "status": "passed",
+        "values": [
+          "14476c600a0842f73107ba560488237ae3a09dd8e88e97727196f85ad2c9153a"
+        ]
+      },
+      {
+        "controlled_variable": "policy",
+        "tag": "policy_sha256",
+        "status": "passed",
+        "values": [
+          "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a"
+        ]
+      },
+      {
+        "controlled_variable": "evaluation_code",
+        "tag": "evaluation_code_sha256",
+        "status": "passed",
+        "values": [
+          "8e7bfbe52e47b6fc0882034954ac99c8f7ceb2cfa2c1dc336e42ba9ce2d28090"
+        ]
+      }
+    ]
+  },
+  "candidate_selection_policy": {
+    "policy_name": "decision_engine_candidate_selection",
+    "policy_version": "v1",
+    "policy_path": "config/candidate_selection.yaml",
+    "status": "learning_policy_not_production_gate",
+    "baseline": {
+      "required": true,
+      "minimum_f1_improvement_over_baseline": 0.02
+    },
+    "thresholds": {
+      "minimum_f1_macro": 0.8,
+      "minimum_weakest_class_recall": 0.7,
+      "maximum_low_confidence_rate": 0.2,
+      "maximum_approval_required_rate": 0.5,
+      "maximum_offline_decision_latency_p95_ms": 200.0
+    },
+    "tie_breakers": [
+      "highest_f1_macro",
+      "lowest_offline_decision_latency_p95_ms",
+      "lowest_low_confidence_rate",
+      "lowest_approval_required_rate",
+      "earliest_start_time",
+      "run_id"
+    ]
+  },
+  "promotion_evidence_contract": {
+    "contract_name": "promotion_evidence_contract",
+    "contract_version": "v1",
+    "contract_path": "config/promotion_evidence_contract.yaml",
+    "status": "learning_contract_not_production_registry"
+  },
+  "baseline_run": {
+    "run_id": "1db2300c064843a394f67486cf226e7c",
+    "run_name": "manual_tfidf_sgd_log_loss",
+    "variant_name": "manual_tfidf_sgd_log_loss",
+    "model_family": "SGDClassifier",
+    "metrics": {
+      "f1_macro": 0.3718,
+      "combined_weakest_class_recall": 0.0,
+      "low_confidence_rate": 0.3,
+      "approval_required_rate": 0.9,
+      "offline_decision_latency_p95_ms": 0.9941
+    }
+  },
+  "baseline_guard": {
+    "status": "passed_with_override",
+    "mode": "non_current_baseline_override",
+    "reason": "non_current_baseline_allowed_with_explicit_reason",
+    "baseline_run_id": "1db2300c064843a394f67486cf226e7c",
+    "current_candidate_run_ids": [
+      "7bfd8e17403a4984a625fa4b007063e0"
+    ],
+    "allow_non_current_baseline": true,
+    "baseline_override_reason": "module7-step3-status-transitions-live-validation"
+  },
+  "selected_candidate": {
+    "run_id": "8e36e5abc3df49cfabcc0f1bb3fb5c2c",
+    "variant_name": "manual_tfidf_logistic_regression",
+    "reason": "candidate_policy_and_baseline_passed",
+    "metrics": {
+      "f1_macro": 1.0,
+      "combined_weakest_class_recall": 1.0,
+      "low_confidence_rate": 0.1,
+      "approval_required_rate": 0.5,
+      "offline_decision_latency_p95_ms": 1.6678
+    }
+  },
+  "candidate_evaluations": [
+    {
+      "run_summary": {
+        "run_id": "1db2300c064843a394f67486cf226e7c",
+        "run_name": "manual_tfidf_sgd_log_loss",
+        "variant_name": "manual_tfidf_sgd_log_loss",
+        "model_family": "SGDClassifier",
+        "metrics": {
+          "f1_macro": 0.3718,
+          "combined_weakest_class_recall": 0.0,
+          "low_confidence_rate": 0.3,
+          "approval_required_rate": 0.9,
+          "offline_decision_latency_p95_ms": 0.9941
+        }
+      },
+      "eligible": false,
+      "decision": "candidate_rejected",
+      "reason": "candidate_is_baseline_run",
+      "policy_result": null,
+      "baseline_result": null,
+      "promotion_evidence_result": null
+    },
+    {
+      "run_summary": {
+        "run_id": "8e36e5abc3df49cfabcc0f1bb3fb5c2c",
+        "run_name": "manual_tfidf_logistic_regression",
+        "variant_name": "manual_tfidf_logistic_regression",
+        "model_family": "LogisticRegression",
+        "metrics": {
+          "f1_macro": 1.0,
+          "combined_weakest_class_recall": 1.0,
+          "low_confidence_rate": 0.1,
+          "approval_required_rate": 0.5,
+          "offline_decision_latency_p95_ms": 1.6678
+        }
+      },
+      "eligible": true,
+      "decision": "candidate_ready",
+      "reason": "candidate_policy_and_baseline_passed",
+      "policy_result": {
+        "run_id": "8e36e5abc3df49cfabcc0f1bb3fb5c2c",
+        "decision": "candidate_ready",
+        "reason": "all_threshold_checks_passed",
+        "checks": [
+          {
+            "metric_name": "f1_macro",
+            "threshold_key": "minimum_f1_macro",
+            "comparison": "gte",
+            "threshold": 0.8,
+            "value": 1.0,
+            "status": "passed"
+          },
+          {
+            "metric_name": "combined_weakest_class_recall",
+            "threshold_key": "minimum_weakest_class_recall",
+            "comparison": "gte",
+            "threshold": 0.7,
+            "value": 1.0,
+            "status": "passed"
+          },
+          {
+            "metric_name": "low_confidence_rate",
+            "threshold_key": "maximum_low_confidence_rate",
+            "comparison": "lte",
+            "threshold": 0.2,
+            "value": 0.1,
+            "status": "passed"
+          },
+          {
+            "metric_name": "approval_required_rate",
+            "threshold_key": "maximum_approval_required_rate",
+            "comparison": "lte",
+            "threshold": 0.5,
+            "value": 0.5,
+            "status": "passed"
+          },
+          {
+            "metric_name": "offline_decision_latency_p95_ms",
+            "threshold_key": "maximum_offline_decision_latency_p95_ms",
+            "comparison": "lte",
+            "threshold": 200.0,
+            "value": 1.6678,
+            "status": "passed"
+          }
+        ],
+        "missing_metrics": [],
+        "failed_checks": []
+      },
+      "baseline_result": {
+        "decision": "candidate_ready",
+        "reason": "sufficient_improvement_over_baseline",
+        "candidate_run_id": "8e36e5abc3df49cfabcc0f1bb3fb5c2c",
+        "baseline_run_id": "1db2300c064843a394f67486cf226e7c",
+        "candidate_f1_macro": 1.0,
+        "baseline_f1_macro": 0.3718,
+        "required_improvement": 0.02,
+        "actual_improvement": 0.6282,
+        "minimum_required_f1_macro": 0.39180000000000004,
+        "checks": [
+          {
+            "check_name": "f1_improvement_over_baseline",
+            "status": "passed",
+            "candidate_f1_macro": 1.0,
+            "baseline_f1_macro": 0.3718,
+            "required_improvement": 0.02,
+            "actual_improvement": 0.6282,
+            "minimum_required_f1_macro": 0.39180000000000004
+          }
+        ]
+      },
+      "promotion_evidence_result": {
+        "status": "passed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [],
+        "missing_metrics": [],
+        "missing_tags": [],
+        "missing_artifacts": []
+      }
+    }
+  ],
+  "candidate_status_transitions": [
+    {
+      "run_id": "1db2300c064843a394f67486cf226e7c",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "action": "skip",
+      "new_candidate_status": null,
+      "promotion_reason": "baseline_run_status_not_changed",
+      "candidate": null,
+      "current_candidate": null
+    },
+    {
+      "run_id": "8e36e5abc3df49cfabcc0f1bb3fb5c2c",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "action": "update",
+      "new_candidate_status": "selected",
+      "promotion_reason": "candidate_policy_and_baseline_passed",
+      "candidate": "true",
+      "current_candidate": "true"
+    }
+  ],
+  "candidate_lifecycle": {
+    "new_current_candidate_run_id": "8e36e5abc3df49cfabcc0f1bb3fb5c2c",
+    "previous_current_candidate_run_ids": [
+      "7bfd8e17403a4984a625fa4b007063e0"
+    ],
+    "superseded_run_ids": [
+      "7bfd8e17403a4984a625fa4b007063e0"
+    ],
+    "already_current": false
+  }
+}

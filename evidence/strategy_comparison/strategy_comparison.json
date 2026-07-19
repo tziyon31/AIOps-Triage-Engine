@@ -1,0 +1,68 @@
+{
+  "fair_comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+  "runs": [
+    {
+      "run_id": "bbfd273bf3574f3787ec8578fee55524",
+      "run_name": "manual_tfidf_logistic_regression",
+      "strategy_name": "manual_tfidf_logistic_regression",
+      "strategy_model_family": "LogisticRegression",
+      "split_sha256": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "train_split_sha256": "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da",
+      "test_split_sha256": "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d",
+      "fair_comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "params": {
+        "strategy_model_family": "LogisticRegression",
+        "strategy_model_max_iter": "1000",
+        "strategy_random_state": "42"
+      },
+      "metrics": {
+        "accuracy": 1.0,
+        "combined_accuracy": 1.0,
+        "f1_macro": 1.0,
+        "combined_f1_macro": 1.0,
+        "combined_weakest_class_recall": 1.0,
+        "low_confidence_count": 2.0,
+        "approval_required_count": 10.0,
+        "policy_block_count": 0.0,
+        "llm_fallback_count": 0.0,
+        "offline_decision_latency_p50_ms": 2.7404,
+        "offline_decision_latency_p95_ms": 3.47,
+        "offline_decision_latency_max_ms": 4.5002
+      }
+    },
+    {
+      "run_id": "e06ad25bd3e943e5b63301d3bea02f4c",
+      "run_name": "manual_tfidf_sgd_log_loss",
+      "strategy_name": "manual_tfidf_sgd_log_loss",
+      "strategy_model_family": "SGDClassifier",
+      "split_sha256": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "train_split_sha256": "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da",
+      "test_split_sha256": "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d",
+      "fair_comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "params": {
+        "strategy_model_family": "SGDClassifier",
+        "strategy_loss": "log_loss",
+        "strategy_model_max_iter": "1000",
+        "strategy_random_state": "42",
+        "strategy_tol": "0.001"
+      },
+      "metrics": {
+        "accuracy": 0.5,
+        "combined_accuracy": 0.5,
+        "f1_macro": 0.3718,
+        "combined_f1_macro": 0.3718,
+        "combined_weakest_class_recall": 0.0,
+        "low_confidence_count": 6.0,
+        "approval_required_count": 18.0,
+        "policy_block_count": 0.0,
+        "llm_fallback_count": 0.0,
+        "offline_decision_latency_p50_ms": 2.2758,
+        "offline_decision_latency_p95_ms": 2.5339,
+        "offline_decision_latency_max_ms": 4.3111
+      }
+    }
+  ],
+  "tradeoffs": [
+    "Different strategies win on f1_macro and p95 latency: manual_tfidf_logistic_regression has the best f1_macro, while manual_tfidf_sgd_log_loss has the best offline p95 latency."
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "updated_at": "2026-07-15T11:38:35.424811+00:00",
+  "current_candidate_run_id": "8e36e5abc3df49cfabcc0f1bb3fb5c2c",
+  "current_candidate_variant_name": "manual_tfidf_logistic_regression",
+  "previous_current_candidate_run_ids": [
+    "7bfd8e17403a4984a625fa4b007063e0"
+  ],
+  "superseded_run_ids": [
+    "7bfd8e17403a4984a625fa4b007063e0"
+  ],
+  "baseline_run_id": "1db2300c064843a394f67486cf226e7c",
+  "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-113809-b7752fad",
+  "experiment_name": "log-triage-decision-engine",
+  "candidate_policy_name": "decision_engine_candidate_selection",
+  "candidate_policy_version": "v1",
+  "selection_status": "selected",
+  "selection_mode": "apply",
+  "selection_report_path": "evidence/candidate_selection/candidate_selection_report.json"
+}

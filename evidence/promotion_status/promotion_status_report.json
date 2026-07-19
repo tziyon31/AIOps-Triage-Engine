@@ -1,0 +1,1713 @@
+{
+  "generated_at": "2026-07-15T11:44:38.555081+00:00",
+  "experiment_name": "log-triage-decision-engine",
+  "promotion_evidence_contract": {
+    "contract_name": "promotion_evidence_contract",
+    "contract_version": "v1",
+    "contract_path": "config/promotion_evidence_contract.yaml",
+    "status": "learning_contract_not_production_registry"
+  },
+  "status_counts": {
+    "missing": 6,
+    "not_evaluated": 30,
+    "selected": 1,
+    "superseded": 4
+  },
+  "status_policy_checks": {
+    "status": "passed",
+    "checks": {
+      "single_current_candidate": true,
+      "selected_runs_have_passed_evidence": true,
+      "rejected_runs_have_reason": true
+    },
+    "current_candidate_run_ids": [
+      "8e36e5abc3df49cfabcc0f1bb3fb5c2c"
+    ],
+    "selected_with_failed_evidence": [],
+    "rejected_without_reason": []
+  },
+  "mlflow_filter_examples": {
+    "selected": "tags.candidate_status = 'selected'",
+    "eligible": "tags.candidate_status = 'eligible'",
+    "rejected": "tags.candidate_status = 'rejected'",
+    "superseded": "tags.candidate_status = 'superseded'",
+    "not_evaluated": "tags.candidate_status = 'not_evaluated'",
+    "current_candidate": "tags.current_candidate = 'true'",
+    "candidate_history": "tags.candidate = 'true'"
+  },
+  "runs": [
+    {
+      "run_id": "1db2300c064843a394f67486cf226e7c",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "not_evaluated",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "tziyon31",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-113809-b7752fad",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 0.9941,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "passed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [],
+        "missing_metrics": [],
+        "missing_tags": [],
+        "missing_artifacts": []
+      }
+    },
+    {
+      "run_id": "8e36e5abc3df49cfabcc0f1bb3fb5c2c",
+      "candidate_status": "selected",
+      "candidate": "true",
+      "current_candidate": "true",
+      "promotion_reason": "candidate_policy_and_baseline_passed",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "2026-07-15T11:38:35.424811+00:00",
+      "run_owner": "tziyon31",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-113809-b7752fad",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.6678,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "passed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [],
+        "missing_metrics": [],
+        "missing_tags": [],
+        "missing_artifacts": []
+      }
+    },
+    {
+      "run_id": "a848c91f95a14727b521c1c319ed581f",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "not_evaluated",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "tziyon31",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-113049-08018cbe",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 0.9076,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "passed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [],
+        "missing_metrics": [],
+        "missing_tags": [],
+        "missing_artifacts": []
+      }
+    },
+    {
+      "run_id": "7bfd8e17403a4984a625fa4b007063e0",
+      "candidate_status": "superseded",
+      "candidate": "true",
+      "current_candidate": "false",
+      "promotion_reason": "candidate_policy_and_baseline_passed",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "tziyon31",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-113049-08018cbe",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.2177,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "passed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [],
+        "missing_metrics": [],
+        "missing_tags": [],
+        "missing_artifacts": []
+      }
+    },
+    {
+      "run_id": "d7e028c13e5c404eb255df29a9be737a",
+      "candidate_status": "missing",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "missing",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": null,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "model_max_iter",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "f1_macro",
+          "combined_accuracy",
+          "combined_weakest_class_recall",
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "candidate_status",
+          "promotion_reason",
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "training_data_sha256",
+          "train_split_sha256",
+          "test_split_sha256",
+          "policy_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "manifest.json",
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "c359e014e84040fe8f9335b8cb37544c",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "not_evaluated",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "tziyon31",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-113032-63564eea",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 2.8572,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "passed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [],
+        "missing_metrics": [],
+        "missing_tags": [],
+        "missing_artifacts": []
+      }
+    },
+    {
+      "run_id": "03ec63bbe77e4e649326d79b7881a6c1",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "not_evaluated",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "tziyon31",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-111601-5b6acf63",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 0.8919,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [],
+        "missing_artifacts": []
+      }
+    },
+    {
+      "run_id": "710206f57ec84252b73e952ae239a45e",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "not_evaluated",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "tziyon31",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-111601-5b6acf63",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.3165,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [],
+        "missing_artifacts": []
+      }
+    },
+    {
+      "run_id": "ca99ebe55172433a9bfa2d20b4a6bd73",
+      "candidate_status": "superseded",
+      "candidate": "true",
+      "current_candidate": "false",
+      "promotion_reason": "candidate_policy_and_baseline_passed",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "tuned_combined_candidate",
+      "comparison_group_id": "final_candidate_tournament-2d47db4a-20260715-094014-bbb92192",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 2.9333,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "20e0daf5425440ec832b9b089f86ab6f",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "current_baseline_config",
+      "comparison_group_id": "final_candidate_tournament-2d47db4a-20260715-094014-bbb92192",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 2.2933,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "c0933cf9f5fe48fb9d91e91f999349a4",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-080324-49930cac",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 2.8319,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "40fa1b4f96544a76a86ac13d82986c33",
+      "candidate_status": "superseded",
+      "candidate": "true",
+      "current_candidate": "false",
+      "promotion_reason": "candidate_policy_and_baseline_passed",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260715-080324-49930cac",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 2.6762,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "b771ef74c0f44d22bc5317d0b862bc06",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-113233-30392754",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 1.1661,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "fbf5b49b832a48f1ad057e1601453630",
+      "candidate_status": "superseded",
+      "candidate": "true",
+      "current_candidate": "false",
+      "promotion_reason": "candidate_policy_and_baseline_passed",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-113233-30392754",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 3.5848,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "9913c2aaeb7e41e5b25e832cd650340d",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-095546-bf3685ca",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 0.8422,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "eb248f38e0c645e7b2aa07181dcd3a89",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-095546-bf3685ca",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.3716,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "4e7e9142a00c4362b22a8a03fad5a924",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-095856-a98bebd5",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 0.8876,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "6eb3fb2da2fc45ea8470b861b9408562",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "model_family_baseline-0c4c0f11-20260714-095856-a98bebd5",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.4992,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "bde8c1331b6a4f6bab0a5bdda39b3a6a",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 0.8638,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "0bf8e629ec634882b245035bf84a57d6",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.5187,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "a3045cc2073b46818de7f0f50bd569d9",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_sgd_log_loss",
+      "comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 0.9353,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "246e805b2fb142f79618bc01af4540e9",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.7322,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "78658abeeede47969c56c64fabd49974",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "manual_tfidf_logistic_regression",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.3936,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "e06ad25bd3e943e5b63301d3bea02f4c",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 2.5339,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "bbfd273bf3574f3787ec8578fee55524",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 3.47,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "7286d9707eee4230ace8842531b65883",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 0.3718,
+        "offline_decision_latency_p95_ms": 4.9804,
+        "low_confidence_rate": 0.3,
+        "approval_required_rate": 0.9
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "47e6f9fd939d4a6a8bc4ceb7355873ed",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 5.2218,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "dc6312230b354ac69fec2d26d0d9c503",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 3.1571,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "3cbb982b0bb44e93a8333f6068fcbda6",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.4393,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "e962665619b8495bbeebfa8d8954f83b",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 1.3967,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "033d4e7c80ed400ebafa589ae8f30da7",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": 2.9593,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "2bb8102ae4f94b97aea3832c8a041116",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": 0.1,
+        "approval_required_rate": 0.5
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "4fb7cfc49b734f20acce81530c7b18ac",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "36e1eab2c8f64889b1316137f9852feb",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "f15cc433e9f94379ac6cbd2bd09408da",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "combined_weakest_class_recall",
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "0d6ff27c1ffc48b2b1bbbd763db8bafd",
+      "candidate_status": "not_evaluated",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "promotion_gate_not_implemented_yet",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "combined_weakest_class_recall",
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "policy_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "fc4575c73a014cd1a36dcecd0b0c4f71",
+      "candidate_status": "missing",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "missing",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "combined_weakest_class_recall",
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "candidate_status",
+          "promotion_reason",
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "policy_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "3d190b902b714052aeb57bcae355e8b3",
+      "candidate_status": "missing",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "missing",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "combined_weakest_class_recall",
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "candidate_status",
+          "promotion_reason",
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "policy_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "85dafd28b0ca4659ae5c39aa7ae44253",
+      "candidate_status": "missing",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "missing",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "combined_weakest_class_recall",
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "candidate_status",
+          "promotion_reason",
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "policy_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "8da731e3842a4d5d829f5a4d0c685156",
+      "candidate_status": "missing",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "missing",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "combined_weakest_class_recall",
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "candidate_status",
+          "promotion_reason",
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "policy_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    },
+    {
+      "run_id": "86cf9edae6bc43058ffc18601de937ec",
+      "candidate_status": "missing",
+      "candidate": "false",
+      "current_candidate": "false",
+      "promotion_reason": "missing",
+      "promotion_rejection_reason": "",
+      "promotion_evaluated_at": "",
+      "run_owner": "missing",
+      "variant_name": "unknown",
+      "comparison_group_id": "unknown",
+      "metrics": {
+        "f1_macro": 1.0,
+        "offline_decision_latency_p95_ms": null,
+        "low_confidence_rate": null,
+        "approval_required_rate": null
+      },
+      "promotion_evidence": {
+        "status": "failed",
+        "contract_name": "promotion_evidence_contract",
+        "contract_version": "v1",
+        "missing_params": [
+          "model_family",
+          "feature_pipeline_name",
+          "feature_pipeline_sha256",
+          "variant_name",
+          "experiment_config_sha256"
+        ],
+        "missing_metrics": [
+          "combined_weakest_class_recall",
+          "low_confidence_rate",
+          "approval_required_rate",
+          "offline_decision_latency_p95_ms"
+        ],
+        "missing_tags": [
+          "candidate_status",
+          "promotion_reason",
+          "run_owner",
+          "comparison_group_id",
+          "variant_name",
+          "comparison_type",
+          "changed_variable",
+          "train_split_sha256",
+          "test_split_sha256",
+          "policy_sha256",
+          "evaluation_code_sha256",
+          "experiment_config_sha256"
+        ],
+        "missing_artifacts": [
+          "promotion_report.md"
+        ]
+      }
+    }
+  ]
+}

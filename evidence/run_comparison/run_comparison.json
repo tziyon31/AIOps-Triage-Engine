@@ -1,0 +1,285 @@
+{
+  "experiment_name": "log-triage-decision-engine",
+  "comparison_group_id": "final_candidate_tournament-2d47db4a-20260715-094014-bbb92192",
+  "run_count": 2,
+  "comparison_contract": {
+    "status": "valid",
+    "comparison_group_id": "final_candidate_tournament-2d47db4a-20260715-094014-bbb92192",
+    "comparison_type": "candidate_tournament",
+    "changed_variable": "candidate_config",
+    "variant_types": [
+      "candidate_config"
+    ],
+    "run_count": 2,
+    "minimum_run_count_met": true,
+    "controlled_variable_status": "passed",
+    "checks": {
+      "single_comparison_group_id": true,
+      "single_comparison_type": true,
+      "single_changed_variable": true,
+      "controlled_variables_passed": true,
+      "at_least_two_runs": true
+    }
+  },
+  "controlled_variable_validation": {
+    "status": "passed",
+    "controlled_variables": [
+      "raw_data",
+      "train_split",
+      "test_split",
+      "policy",
+      "evaluation_code"
+    ],
+    "checks": [
+      {
+        "controlled_variable": "raw_data",
+        "tag": "training_data_sha256",
+        "status": "passed",
+        "values": [
+          "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414"
+        ]
+      },
+      {
+        "controlled_variable": "train_split",
+        "tag": "train_split_sha256",
+        "status": "passed",
+        "values": [
+          "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da"
+        ]
+      },
+      {
+        "controlled_variable": "test_split",
+        "tag": "test_split_sha256",
+        "status": "passed",
+        "values": [
+          "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d"
+        ]
+      },
+      {
+        "controlled_variable": "policy",
+        "tag": "policy_sha256",
+        "status": "passed",
+        "values": [
+          "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a"
+        ]
+      },
+      {
+        "controlled_variable": "evaluation_code",
+        "tag": "evaluation_code_sha256",
+        "status": "passed",
+        "values": [
+          "323a2bb338feb48f8f3ad083ee759676abb743260d3c8e44a8e78ce4365ef136"
+        ]
+      }
+    ]
+  },
+  "candidate_selection_input": {
+    "ready_for_candidate_selection": true,
+    "reason": "comparison_contract_valid",
+    "candidate_pool": [
+      {
+        "run_id": "ca99ebe55172433a9bfa2d20b4a6bd73",
+        "run_name": "tuned_combined_candidate",
+        "variant_name": "tuned_combined_candidate",
+        "variant_type": "candidate_config",
+        "comparison_type": "candidate_tournament",
+        "changed_variable": "candidate_config",
+        "model_family": "LogisticRegression",
+        "feature_pipeline_name": "manual_features_plus_tfidf",
+        "metrics": {
+          "combined_accuracy": 1.0,
+          "f1_macro": 1.0,
+          "combined_f1_macro": 1.0,
+          "combined_weakest_class_recall": 1.0,
+          "low_confidence_count": 2.0,
+          "low_confidence_rate": 0.1,
+          "approval_required_count": 10.0,
+          "approval_required_rate": 0.5,
+          "policy_block_count": 0.0,
+          "llm_fallback_count": 0.0,
+          "invalid_decision_schema_count": 0.0,
+          "offline_decision_latency_p50_ms": 2.3975,
+          "offline_decision_latency_p95_ms": 2.9333,
+          "offline_decision_latency_max_ms": 3.3964
+        }
+      },
+      {
+        "run_id": "20e0daf5425440ec832b9b089f86ab6f",
+        "run_name": "current_baseline_config",
+        "variant_name": "current_baseline_config",
+        "variant_type": "candidate_config",
+        "comparison_type": "candidate_tournament",
+        "changed_variable": "candidate_config",
+        "model_family": "SGDClassifier",
+        "feature_pipeline_name": "manual_features_plus_tfidf",
+        "metrics": {
+          "combined_accuracy": 0.5,
+          "f1_macro": 0.3718,
+          "combined_f1_macro": 0.3718,
+          "combined_weakest_class_recall": 0.0,
+          "low_confidence_count": 6.0,
+          "low_confidence_rate": 0.3,
+          "approval_required_count": 18.0,
+          "approval_required_rate": 0.9,
+          "policy_block_count": 0.0,
+          "llm_fallback_count": 0.0,
+          "invalid_decision_schema_count": 0.0,
+          "offline_decision_latency_p50_ms": 2.1198,
+          "offline_decision_latency_p95_ms": 2.2933,
+          "offline_decision_latency_max_ms": 2.8612
+        }
+      }
+    ]
+  },
+  "best_runs": {
+    "best_f1_macro": {
+      "run_id": "ca99ebe55172433a9bfa2d20b4a6bd73",
+      "variant_name": "tuned_combined_candidate",
+      "metric_value": 1.0
+    },
+    "best_combined_accuracy": {
+      "run_id": "ca99ebe55172433a9bfa2d20b4a6bd73",
+      "variant_name": "tuned_combined_candidate",
+      "metric_value": 1.0
+    },
+    "best_low_confidence_rate": {
+      "run_id": "ca99ebe55172433a9bfa2d20b4a6bd73",
+      "variant_name": "tuned_combined_candidate",
+      "metric_value": 0.1
+    },
+    "best_approval_required_rate": {
+      "run_id": "ca99ebe55172433a9bfa2d20b4a6bd73",
+      "variant_name": "tuned_combined_candidate",
+      "metric_value": 0.5
+    },
+    "best_latency_p95": {
+      "run_id": "20e0daf5425440ec832b9b089f86ab6f",
+      "variant_name": "current_baseline_config",
+      "metric_value": null
+    }
+  },
+  "tradeoff_summary": [
+    "There is a quality/latency tradeoff: the best f1_macro variant is not the fastest p95 offline latency variant.",
+    "The same variant currently wins both f1_macro and low_confidence_rate."
+  ],
+  "runs": [
+    {
+      "run_id": "ca99ebe55172433a9bfa2d20b4a6bd73",
+      "run_name": "tuned_combined_candidate",
+      "status": "FINISHED",
+      "start_time": "2026-07-15 09:40:19.744000+00:00",
+      "tags": {
+        "variant_name": "tuned_combined_candidate",
+        "variant_type": "candidate_config",
+        "comparison_type": "candidate_tournament",
+        "changed_variable": "candidate_config",
+        "controlled_variables": "raw_data,train_split,test_split,policy,evaluation_code",
+        "comparison_group_id": "final_candidate_tournament-2d47db4a-20260715-094014-bbb92192",
+        "experiment_name": "final_candidate_tournament",
+        "experiment_config_path": "config/experiments/final_candidate_tournament.yaml",
+        "experiment_config_sha256": "2d47db4ab7d424d553b0b3315634f09fd6d6b0081ca9c102152c273c2120e5ae",
+        "split_sha256": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+        "train_split_sha256": "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da",
+        "test_split_sha256": "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d",
+        "feature_pipeline_name": "manual_features_plus_tfidf",
+        "feature_pipeline_sha256": "14476c600a0842f73107ba560488237ae3a09dd8e88e97727196f85ad2c9153a",
+        "vectorizer_name": "TfidfVectorizer",
+        "model_family": "LogisticRegression",
+        "policy_sha256": "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a",
+        "training_data_sha256": "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414",
+        "evaluation_code_sha256": "323a2bb338feb48f8f3ad083ee759676abb743260d3c8e44a8e78ce4365ef136"
+      },
+      "params": {
+        "tfidf_ngram_range": "[1, 1]",
+        "variant_random_state": "42",
+        "random_seed": "42",
+        "feature_pipeline_name": "manual_features_plus_tfidf",
+        "model_type": "logistic_regression",
+        "variant_model_max_iter": "1000",
+        "vectorizer_ngram_range": "[1, 1]",
+        "schema_version": "v1",
+        "test_size": "0.4",
+        "vectorizer_name": "TfidfVectorizer",
+        "model_max_iter": "1000",
+        "artifact_type": "log_triage_decision_engine",
+        "variant_model_family": "LogisticRegression"
+      },
+      "metrics": {
+        "combined_accuracy": 1.0,
+        "f1_macro": 1.0,
+        "combined_f1_macro": 1.0,
+        "combined_weakest_class_recall": 1.0,
+        "low_confidence_count": 2.0,
+        "low_confidence_rate": 0.1,
+        "approval_required_count": 10.0,
+        "approval_required_rate": 0.5,
+        "policy_block_count": 0.0,
+        "llm_fallback_count": 0.0,
+        "invalid_decision_schema_count": 0.0,
+        "offline_decision_latency_p50_ms": 2.3975,
+        "offline_decision_latency_p95_ms": 2.9333,
+        "offline_decision_latency_max_ms": 3.3964
+      }
+    },
+    {
+      "run_id": "20e0daf5425440ec832b9b089f86ab6f",
+      "run_name": "current_baseline_config",
+      "status": "FINISHED",
+      "start_time": "2026-07-15 09:40:15.786000+00:00",
+      "tags": {
+        "variant_name": "current_baseline_config",
+        "variant_type": "candidate_config",
+        "comparison_type": "candidate_tournament",
+        "changed_variable": "candidate_config",
+        "controlled_variables": "raw_data,train_split,test_split,policy,evaluation_code",
+        "comparison_group_id": "final_candidate_tournament-2d47db4a-20260715-094014-bbb92192",
+        "experiment_name": "final_candidate_tournament",
+        "experiment_config_path": "config/experiments/final_candidate_tournament.yaml",
+        "experiment_config_sha256": "2d47db4ab7d424d553b0b3315634f09fd6d6b0081ca9c102152c273c2120e5ae",
+        "split_sha256": "1b82b05d89383af705930097fb3ba580f7cab037e5728d2f855751050e980724",
+        "train_split_sha256": "a628a9a806058548a801a950e9656c2c9fd92d634d7ef06a9c1f1397b41b87da",
+        "test_split_sha256": "fcbbb619856f234b6713c4024d6d3fb2dcd5adade40947acb4d661e7f93ecd6d",
+        "feature_pipeline_name": "manual_features_plus_tfidf",
+        "feature_pipeline_sha256": "14476c600a0842f73107ba560488237ae3a09dd8e88e97727196f85ad2c9153a",
+        "vectorizer_name": "TfidfVectorizer",
+        "model_family": "SGDClassifier",
+        "policy_sha256": "0c8855fb4be30b3a99b425b2c9df3ae329170681d32263132c2149a7aa366c4a",
+        "training_data_sha256": "8fa110e64b91dc692fad42dd58a8073a0909fe5f619489842f735c1098963414",
+        "evaluation_code_sha256": "323a2bb338feb48f8f3ad083ee759676abb743260d3c8e44a8e78ce4365ef136"
+      },
+      "params": {
+        "tfidf_ngram_range": "[1, 1]",
+        "variant_random_state": "42",
+        "random_seed": "42",
+        "feature_pipeline_name": "manual_features_plus_tfidf",
+        "model_type": "logistic_regression",
+        "variant_model_max_iter": "1000",
+        "vectorizer_ngram_range": "[1, 1]",
+        "schema_version": "v1",
+        "test_size": "0.4",
+        "vectorizer_name": "TfidfVectorizer",
+        "model_max_iter": "1000",
+        "artifact_type": "log_triage_decision_engine",
+        "variant_model_family": "SGDClassifier",
+        "variant_loss": "log_loss",
+        "variant_tol": "0.001"
+      },
+      "metrics": {
+        "combined_accuracy": 0.5,
+        "f1_macro": 0.3718,
+        "combined_f1_macro": 0.3718,
+        "combined_weakest_class_recall": 0.0,
+        "low_confidence_count": 6.0,
+        "low_confidence_rate": 0.3,
+        "approval_required_count": 18.0,
+        "approval_required_rate": 0.9,
+        "policy_block_count": 0.0,
+        "llm_fallback_count": 0.0,
+        "invalid_decision_schema_count": 0.0,
+        "offline_decision_latency_p50_ms": 2.1198,
+        "offline_decision_latency_p95_ms": 2.2933,
+        "offline_decision_latency_max_ms": 2.8612
+      }
+    }
+  ]
+}
