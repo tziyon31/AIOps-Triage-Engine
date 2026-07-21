@@ -156,3 +156,12 @@ This module does **not**:
 - [x] no runtime behavior changed
 - [x] no GitHub Actions workflow changed
 - [x] no Application/Core coupling introduced
+
+## Stage 5.6 Module #3
+
+Module #3 adds deployment readiness on top of this container:
+
+- Basic Auth support through `MLFLOW_ENABLE_BASIC_AUTH=true`
+- Remote deployment instructions in `docs/remote_mlflow_deployment_runbook.md`
+- Remote smoke verification via `scripts/verify_remote_mlflow.py`
+- Official experiment workflow is **not** implemented yet
