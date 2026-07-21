@@ -1,0 +1,27 @@
+experiment_name: smoke_official_run
+comparison_type: smoke_test
+changed_variable: execution_environment
+
+controlled_variables:
+  - raw_data
+  - train_split
+  - test_split
+  - feature_pipeline
+  - policy
+  - evaluation_code
+
+feature_pipeline:
+  feature_pipeline_name: manual_features_plus_tfidf
+  vectorizer_name: TfidfVectorizer
+  vectorizer_params:
+    max_features: null
+    ngram_range: [1, 1]
+
+variants:
+  - variant_name: smoke_logistic_regression
+    variant_type: smoke_test
+    model_family: LogisticRegression
+    model_params:
+      model_family: LogisticRegression
+      model_max_iter: 1000
+      random_state: 42
