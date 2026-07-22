@@ -45,8 +45,14 @@ else
 fi
 
 # Clients talk only to the tracking server. The server holds S3 credentials and
-# proxies artifact uploads/downloads (--serve-artifacts). Do not use
-# --default-artifact-root here, or clients would upload directly to S3 and need boto3.
+# proxies artifact uploads/downloads (--serve-artifacts).
+#
+# --default-artifact-root must be mlflow-artifacts:/ (proxy URI for new experiments).
+# Do NOT set it to s3://... — that makes clients upload directly to S3 and need boto3.
+# --artifacts-destination is where the server stores files (S3).
+#
+# Already-created experiments keep their old artifact root. Use a new experiment name
+# after enabling proxy mode.
 exec mlflow server \
   ${AUTH_ARGS} \
   --host "${HOST}" \
@@ -54,5 +60,6 @@ exec mlflow server \
   --backend-store-uri "${MLFLOW_BACKEND_STORE_URI}" \
   --serve-artifacts \
   --artifacts-destination "${MLFLOW_ARTIFACT_ROOT}" \
+  --default-artifact-root mlflow-artifacts:/ \
   --allowed-hosts "${MLFLOW_SERVER_ALLOWED_HOSTS}" \
   --cors-allowed-origins "${MLFLOW_SERVER_CORS_ALLOWED_ORIGINS}"
