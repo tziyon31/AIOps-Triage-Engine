@@ -49,14 +49,14 @@ S3 stores artifacts.
 | #2 | MLflow Tracking Server Docker image | **done** | `infra/mlflow/` |
 | #3 | Deployment readiness + Basic Auth + runbook | **done** | `docs/remote_mlflow_deployment_runbook.md` |
 | #4 | EC2 host + Elastic IP + Security Group baseline | **done** | operator-IP restricted SG; HTTP only |
-| #5 | GitOps-lite deploy (systemd timer + candidate/prod switch) | **partial** | works; stale-image skip logic needs hardening/audit |
+| #5 | AI-assisted PR quality gate | **done** | `.github/pull_request_template.md` + `docs/ai_assisted_change_policy.md`; relies on existing CI gates |
 | #6 | Aiven PostgreSQL `mlflow_db` backend | **done** | dedicated DB, separate from `app_db` |
 | #7 | S3 artifact destination under `mlflow/` | **done** | server-side destination |
 | #8 | Artifact proxy (`mlflow-artifacts:/` + `--serve-artifacts`) | **done** | verified by smoke |
 | #9 | IAM Role S3 access (no AWS keys in env file) | **done** | keys must not live in `mlflow.env` |
 | #10 | GitHub Actions official experiment writer | **not_started** | required for `official=true` runs |
 | #11 | Official promotion workflow (apply only via Actions) | **not_started** | no official `--apply` automation yet |
-| #12 | Hardening: HTTPS, retention, connection limits, GitOps image-tag check | **partial** | HTTP deferred; Aiven connection limit known; retention not enforced |
+| #12 | Hardening: HTTPS, retention, connection limits, GitOps image-tag check | **partial** | HTTP deferred; Aiven connection limit known; GitOps-lite works but stale-image skip needs hardening |
 
 Status legend:
 
@@ -114,10 +114,23 @@ Do not treat laptop smoke runs as promotion source of truth.
 
 1. Transport is HTTP; HTTPS/reverse proxy deferred (Module #12).
 2. Aiven plan connection limit is low; connection exhaustion was observed during overlapping containers.
-3. GitOps may skip rebuild when git SHA matches even if running image tag is stale (Module #5/12).
+3. GitOps-lite may skip rebuild when git SHA matches even if running image tag is stale (Module #12).
 4. Experiments created before proxy mode keep `s3://` artifact roots forever.
 5. No enterprise RBAC yet; Basic Auth only.
-6. No official writer / promotion automation yet.
+6. No official writer / promotion automation yet (Modules #10 / #11).
+7. AI-assisted PR quality gate is a human review contract; it does not automatically detect AI-generated code.
+
+---
+
+## CI expectations for Module #5
+
+Existing CI remains the meaningful merge gate:
+
+- `quality` job: dependency install, train-for-tests, `compileall`, deterministic `pytest` (includes architecture-boundary tests, schema/policy tests when present)
+- on `main`: pipeline/quality-gate evidence and selected integration jobs
+
+Module #5 does **not** add fake AI detection jobs.
+A failed meaningful gate still blocks merge.
 
 ---
 
@@ -138,3 +151,5 @@ Recommended order:
 - `docs/remote_mlflow_live_verification.md`
 - `docs/remote_mlflow_verification_report.md`
 - `docs/architecture_boundaries.md`
+- `docs/ai_assisted_change_policy.md`
+- `.github/pull_request_template.md`
